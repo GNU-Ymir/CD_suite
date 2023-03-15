@@ -42,7 +42,7 @@ Version: ${GCC_VERSION}
 Architecture: amd64
 Maintainer: ecadorel@gmail.com
 Description: gnu ymir compiler
-Depends: g++-${GCC_MAJOR_VERSION} (>= $GCC_MAJOR_VERSION), gcc-${GCC_MAJOR_VERSION} (>= $GCC_MAJOR_VERSION), libgc-dev
+Depends: g++-${GCC_MAJOR_VERSION} (>= $GCC_MAJOR_VERSION), gcc-${GCC_MAJOR_VERSION} (>= $GCC_MAJOR_VERSION), libgc-dev, libdwarf-dev
 EOF
 
 dpkg-deb --build ${INSTALL_DIR}/gyc-${GCC_VERSION}-build/gcc-deb
