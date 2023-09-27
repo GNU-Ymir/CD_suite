@@ -1,6 +1,7 @@
 GCC_VERSION=$1
 GCC_MAJOR_VERSION=$(cut -d '.' -f 1 <<< $GCC_VERSION)
 INSTALL_DIR=$2
+YMIR_VERSION=$3
 
 echo $GCC_VERSION
 echo $GCC_MAJOR_VERSION
@@ -26,7 +27,9 @@ git checkout releases/gcc-${GCC_VERSION}
 
 cd ${INSTALL_DIR}/gyc-${GCC_VERSION}-build/gcc-src/gcc/
 git clone --depth=1 https://github.com/GNU-Ymir/gymir.git ymir
-
+git fetch --all --tags
+git checkout ${YMIR_VERSION}
+git pull origin ${YMIR_VERSION}
 
 cd ${INSTALL_DIR}/gyc-${GCC_VERSION}-build/gcc-src/
 
@@ -81,6 +84,8 @@ cd ${INSTALL_DIR}/gyc-${GCC_VERSION}-build/
 
 git clone https://github.com/GNU-Ymir/yruntime.git midgard
 cd ${INSTALL_DIR}/gyc-${GCC_VERSION}-build/midgard/
+git fetch --all --tags
+git checkout ${YMIR_VERSION}
 mkdir .build
 cd .build
 
