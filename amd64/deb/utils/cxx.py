@@ -11,12 +11,14 @@ Description: gnu ymir compiler
 Depends: g++-{GCC_MAJOR_VERSION} (>= {GCC_MAJOR_VERSION}), gcc-{GCC_MAJOR_VERSION} (>= {GCC_MAJOR_VERSION}), libgc-dev, libdwarf-dev
 """
 
-
+#
+#
+#
 class CxxBuilder:
     def __init__ (self, gcc_version):
         self._gcc_version = gcc_version
         self._gcc_major_version = gcc_version.split (".")[0]
-        self._vm = utils.vm.VMLauncher ()
+        self._vm = utils.vm.VMLauncher ("cxx")
         pass
 
     # Run the builder and generate the
@@ -31,6 +33,7 @@ class CxxBuilder:
         self._cloneMidgard ()
         self._buildMidgard ()
         self._createFinalDebFile ()
+        self._vm.halt ()
 
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
@@ -38,6 +41,7 @@ class CxxBuilder:
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
+
 
     # Clone the GCC repository
     def _cloneRepo (self):
@@ -63,7 +67,7 @@ class CxxBuilder:
         self._vm.runCmd ("cd gcc/gcc-build && rm gcc/ymir/*.o")
         self._vm.runCmd ("cd gcc/gcc-build && rm prev-gcc/ymir/*.o")
 
-    # Make the
+    # Make the compiler
     def _make (self):
         self._vm.runCmd ("cd gcc/gcc-build && make")
         self._vm.runCmd ("cd gcc/gcc-build && make install DESTDIR=/home/vagrant/gcc/gcc-install")
@@ -109,4 +113,4 @@ class CxxBuilder:
         self._vm.runCmd (f"cd gcc/midgard && cp -r std /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd (f"cd gcc/midgard && cp -r etc /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../gyc_{self._gcc_version}_amd64.deb")
+        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../cxx_gyc_{self._gcc_version}_amd64.deb")

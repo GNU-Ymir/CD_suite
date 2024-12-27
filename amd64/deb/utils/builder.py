@@ -3,6 +3,8 @@
 import yaml
 import utils.cxx
 import utils.boot
+import utils.gyllir
+
 
 class Builder :
 
@@ -17,5 +19,7 @@ class Builder :
         for v in self._versions:
             if v == "cxx_version":
                 utils.cxx.CxxBuilder (self._gcc_version).run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "cxx").run ()
             elif v == "bootstrap_v0.1" :
-                utils.boot.BootstrapBuilder ("v0.1").run ()
+                utils.boot.BootstrapBuilder (self._gcc_version, "cxx", "v0.1").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v0.1")

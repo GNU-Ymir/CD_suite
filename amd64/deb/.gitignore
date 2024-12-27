@@ -1,4 +1,6 @@
 Vagrantfile
 .vagrant
+.cxx
+.bootstrap
 *.deb
 *.pyc

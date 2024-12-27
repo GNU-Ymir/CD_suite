@@ -22,34 +22,44 @@ end
 
 class VMLauncher :
 
-    def __init__ (self):
+    def __init__ (self, name):
+        self._name = name
+
         try:
-            os.mkdir(".vagrant")
+            os.mkdir(f".{self._name}")
             print(f"Directory '{directory_name}' created successfully.")
         except Exception:
             pass
 
-        with open (".vagrant/Vagrantfile", "w") as f:
+        with open (f".{self._name}/Vagrantfile", "w") as f:
             f.write (vagrant)
 
     # Boot the VM
     def boot (self) :
-        p = subprocess.Popen('vagrant up', stdout = PIPE, stderr = STDOUT, shell = True, cwd="./.vagrant")
+        p = subprocess.Popen('vagrant up', stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
             print (line.decode ("utf-8"), end="")
 
-        p = subprocess.Popen('vagrant provision', stdout = PIPE, stderr = STDOUT, shell = True, cwd="./.vagrant")
+        p = subprocess.Popen('vagrant provision', stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
             print (line.decode ("utf-8"), end="")
 
+
+    # Stop the VM
+    def halt (self):
+        p = subprocess.Popen('vagrant halt', stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
+        while True:
+            line = p.stdout.readline()
+            if not line: break
+            print (line.decode ("utf-8"), end="")
 
     # Run a command inside the VM
     def runCmd (self, cmd) :
-        p = subprocess.Popen ("vagrant ssh -- -t \'" + cmd + "\'", stdout = PIPE, stderr = STDOUT, shell = True, cwd="./.vagrant")
+        p = subprocess.Popen ("vagrant ssh -- -t \'" + cmd + "\'", stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
@@ -58,7 +68,7 @@ class VMLauncher :
 
     # Upload file to vagrant vm
     def uploadFile (self, fr, to) :
-        p = subprocess.Popen (f"vagrant scp {fr} {to}",  stdout = PIPE, stderr = STDOUT, shell = True, cwd="./.vagrant")
+        p = subprocess.Popen (f"vagrant scp {fr} {to}",  stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
@@ -67,7 +77,7 @@ class VMLauncher :
 
     # Upload file to vagrant vm
     def downloadFile (self, fr, to) :
-        p = subprocess.Popen (f"vagrant scp :{fr} {to}",  stdout = PIPE, stderr = STDOUT, shell = True, cwd="./.vagrant")
+        p = subprocess.Popen (f"vagrant scp :{fr} {to}",  stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
