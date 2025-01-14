@@ -4,3 +4,4 @@ Vagrantfile
 .bootstrap
 *.deb
 *.pyc
+results/

@@ -24,7 +24,7 @@ class BootstrapBuilder:
     def run (self) :
         print (f"Building Bootstrap version {self._version} from : {self._prev}")
         self._vm.boot ()
-        # self._installDependencies ()
+        self._installDependencies ()
         # self._cloneRepo ()
         # self._configureBuild ()
         self._make ()
@@ -41,9 +41,9 @@ class BootstrapBuilder:
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
-        self._vm.uploadFile (f"../{self._prev}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
+        self._vm.uploadFile (f"../results/{self._prev}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
         self._vm.runCmd ("sudo dpkg -i ./gyc.deb")
-        self._vm.uploadFile (f"../{self._prev}_gyllir_amd64.deb", "gyllir.deb")
+        self._vm.uploadFile (f"../results/{self._prev}_gyllir_amd64.deb", "gyllir.deb")
         self._vm.runCmd ("sudo dpkg -i ./gyllir.deb")
 
     # Clone the gcc repot
@@ -58,8 +58,8 @@ class BootstrapBuilder:
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc && git clone https://github.com/GNU-Ymir/gymir.git ymir")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git fetch --all")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git checkout bootstrap")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git pull origin bootstrap")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git checkout {self._version}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git pull origin {self._version}")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && touch lang.opt.urls")
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git clone https://github.com/GNU-Ymir/bootstrap.git bootstrap")
@@ -130,4 +130,4 @@ class BootstrapBuilder:
         self._vm.runCmd (f"mkdir -p /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd (f"cd gcc/midgard/midgard && cp -r * /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../{self._version}_gyc_{self._gcc_version}_amd64.deb")
+        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb")

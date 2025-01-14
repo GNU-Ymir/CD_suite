@@ -35,7 +35,7 @@ class GyllirBuilder:
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
-        self._vm.uploadFile (f"../{self._version}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
+        self._vm.uploadFile (f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
         self._vm.runCmd ("sudo dpkg -i ./gyc.deb")
 
     # Clone the gyllir repo
@@ -71,4 +71,4 @@ class GyllirBuilder:
         self._vm.uploadFile ("control", "install/DEBIAN/control")
         self._vm.runCmd ("dpkg --build install")
 
-        self._vm.downloadFile ("install.deb", f"../{self._version}_gyllir_amd64.deb")
+        self._vm.downloadFile ("install.deb", f"../results/{self._version}_gyllir_amd64.deb")

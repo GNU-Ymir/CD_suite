@@ -113,4 +113,4 @@ class CxxBuilder:
         self._vm.runCmd (f"cd gcc/midgard && cp -r std /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd (f"cd gcc/midgard && cp -r etc /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../cxx_gyc_{self._gcc_version}_amd64.deb")
+        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/cxx_gyc_{self._gcc_version}_amd64.deb")
