@@ -26,8 +26,7 @@ class GyllirBuilder:
         self._cloneRepo ()
         self._make ()
         self._createDebFile ()
-
-        # self._vm.halt ()
+        self._vm.halt ()
 
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
@@ -46,8 +45,8 @@ class GyllirBuilder:
             self._vm.runCmd (f"cd gyllir && git checkout cxx_version")
             self._vm.runCmd (f"cd gyllir && git pull origin cxx_version")
         else:
-            self._vm.runCmd (f"cd gyllir && git checkout {self._version}")
-            self._vm.runCmd (f"cd gyllir && git pull origin {self._version}")
+            self._vm.runCmd (f"cd gyllir && git checkout bootstrap")
+            self._vm.runCmd (f"cd gyllir && git pull origin bootstrap")
 
         self._vm.runCmd ("cd gyllir && mkdir .build")
         self._vm.runCmd ("cd gyllir/.build && cmake ..")
@@ -65,6 +64,7 @@ class GyllirBuilder:
         self._vm.runCmd ("mkdir -p install/DEBIAN")
         self._vm.runCmd ("cp gyllir/bash/_gyllir /home/vagrant/install/etc/bash_completion.d")
         self._vm.runCmd ("cp gyllir/.build/gyllir /home/vagrant/install/usr/bin/")
+        self._vm.runCmd ("chmod +x /home/vagrant/install/usr/bin/gyllir")
         with open (f".{self._version}/control", "w") as f:
             f.write (CONTROL)
 

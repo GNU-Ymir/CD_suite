@@ -23,17 +23,18 @@ class BootstrapBuilder:
     # Run the builder and generate the
     def run (self) :
         print (f"Building Bootstrap version {self._version} from : {self._prev}")
+        self._vm.destroy ()
         self._vm.boot ()
         self._installDependencies ()
-        # self._cloneRepo ()
-        # self._configureBuild ()
+        self._cloneRepo ()
+        self._configureBuild ()
         self._make ()
         self._createFirstDebFile ()
         self._cloneMidgard ()
         self._buildMidgard ()
         self._createFinalDebFile ()
 
-        # self._vm.halt ()
+        self._vm.halt ()
 
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
@@ -64,8 +65,8 @@ class BootstrapBuilder:
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git clone https://github.com/GNU-Ymir/bootstrap.git bootstrap")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir/bootstrap && git fetch --all tags")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git checkout {self._version}")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git pull origin {self._version}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git checkout {self._version}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git pull origin {self._version}")
 
         self._vm.runCmd ("cd gcc/gcc-src/ && ./contrib/download_prerequisites")
 
@@ -79,6 +80,7 @@ class BootstrapBuilder:
     # Make the compiler
     def _make (self) :
         self._vm.runCmd ("cd gcc/gcc-build && make -j4")
+        self._vm.runCmd ("cd gcc/gcc-build && make")
         self._vm.runCmd ("cd gcc/gcc-build && make install DESTDIR=/home/vagrant/gcc/gcc-install")
 
 

@@ -5,3 +5,5 @@ Vagrantfile
 *.deb
 *.pyc
 results/
+.v*/
+.bootstrap/

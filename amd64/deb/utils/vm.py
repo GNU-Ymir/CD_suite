@@ -13,6 +13,9 @@ Vagrant.configure("2") do |config|
     v.cpus = 4
   end
 
+  config.nfs.verify_installed = false
+  config.vm.synced_folder '.', '/vagrant', disabled: true
+
   # Mount cachecache directories
   config.vm.provision "shell" do |s|
       s.inline = "apt-get update"
@@ -43,6 +46,14 @@ class VMLauncher :
             print (line.decode ("utf-8"), end="")
 
         p = subprocess.Popen('vagrant provision', stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
+        while True:
+            line = p.stdout.readline()
+            if not line: break
+            print (line.decode ("utf-8"), end="")
+
+    # destroy the VM and all its files
+    def destroy (self):
+        p = subprocess.Popen('vagrant destroy -f', stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()
             if not line: break
