@@ -45,8 +45,8 @@ class GyllirBuilder:
             self._vm.runCmd (f"cd gyllir && git checkout cxx_version")
             self._vm.runCmd (f"cd gyllir && git pull origin cxx_version")
         else:
-            self._vm.runCmd (f"cd gyllir && git checkout bootstrap")
-            self._vm.runCmd (f"cd gyllir && git pull origin bootstrap")
+            self._vm.runCmd (f"cd gyllir && git checkout {self._version}")
+            self._vm.runCmd (f"cd gyllir && git pull origin {self._version}")
 
         self._vm.runCmd ("cd gyllir && mkdir .build")
         self._vm.runCmd ("cd gyllir/.build && cmake ..")

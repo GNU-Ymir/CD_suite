@@ -83,7 +83,7 @@ class CxxBuilder:
         self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s gyc-{self._gcc_major_version} gyc")
         self._vm.runCmd (f"mkdir -p gcc/gcc-bin/DEBIAN")
 
-        with open (".vagrant/control", "w") as f:
+        with open (".cxx/control", "w") as f:
             c = CONTROL.replace ("{GCC_MAJOR_VERSION}", self._gcc_major_version)
             c = c.replace ("{GCC_VERSION}", self._gcc_version)
             f.write (c)
