@@ -21,6 +21,7 @@ class GyllirBuilder:
     # Run the builder and generate the
     def run (self) :
         print (f"Building Gyllir version {self._version}")
+        self._vm.destroy ()
         self._vm.boot ()
         self._installDependencies ()
         self._cloneRepo ()

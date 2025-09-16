@@ -18,7 +18,7 @@ class BootstrapBuilder:
         self._gcc_major_version = gcc_version.split (".")[0]
         self._prev = prev
         self._version = version
-        self._vm = utils.vm.VMLauncher ("bootstrap")
+        self._vm = utils.vm.VMLauncher (f"boot_{self._version}")
 
     # Run the builder and generate the
     def run (self) :
@@ -41,11 +41,11 @@ class BootstrapBuilder:
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
-        self._vm.runCmd ("sudo apt-get install -y build-essential")
-        self._vm.uploadFile (f"../results/{self._prev}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
-        self._vm.runCmd ("sudo dpkg -i ./gyc.deb")
-        self._vm.uploadFile (f"../results/{self._prev}_gyllir_amd64.deb", "gyllir.deb")
-        self._vm.runCmd ("sudo dpkg -i ./gyllir.deb")
+        self._vm.runCmd ("sudo pt-get install -y build-essential")
+        self._vm.uploadFile (f"../results/{self._prev}_gyc_{self._gcc_version}_amd64.deb", f"gyc_{self._prev}.deb")
+        self._vm.runCmd (f"sudo dpkg -i ./gyc_{self._prev}.deb")
+        self._vm.uploadFile (f"../results/{self._prev}_gyllir_amd64.deb", f"gyllir_{self._prev}.deb")
+        self._vm.runCmd (f"sudo dpkg -i ./gyllir_{self._prev}.deb")
 
     # Clone the gcc repot
     def _cloneRepo (self):
@@ -95,7 +95,7 @@ class BootstrapBuilder:
         self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s gyc-{self._gcc_major_version} gyc")
         self._vm.runCmd (f"mkdir -p gcc/gcc-bin/DEBIAN")
 
-        with open (".bootstrap/control", "w") as f:
+        with open (f".boot_{self._version}/control", "w") as f:
             c = CONTROL.replace ("{GCC_MAJOR_VERSION}", self._gcc_major_version)
             c = c.replace ("{GCC_VERSION}", self._gcc_version)
             f.write (c)
@@ -129,7 +129,7 @@ class BootstrapBuilder:
 
     # Create the final deb file and download it
     def _createFinalDebFile (self):
-        self._vm.runCmd (f"mkdir -p /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd (f"cd gcc/midgard/midgard && cp -r * /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
+        self._vm.runCmd (f"mkdir -p /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/{self._version[1:]}")
+        self._vm.runCmd (f"cd gcc/midgard/midgard && cp -r * /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/{self._version[1:]}")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
         self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb")

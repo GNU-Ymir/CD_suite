@@ -26,9 +26,12 @@ class Builder :
             elif v == "bootstrap_v1.0":
                 utils.boot.BootstrapBuilder (self._gcc_version, "v0.1", "v1.0").run ()
                 utils.gyllir.GyllirBuilder (self._gcc_version, "v1.0").run ()
-            elif v == "bootstrap_v1.0_alone":
-                utils.boot.BootstrapBuilder (self._gcc_version, "v1.0", "v1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.0").run ()
+            elif v == "bootstrap_v1.1":
+                utils.boot.BootstrapBuilder (self._gcc_version, "v1.0", "v1.1").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1").run ()
+            elif v == "bootstrap_v1.1_alone":
+                utils.boot.BootstrapBuilder (self._gcc_version, "v1.1", "v1.1").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1").run ()
             else:
                 print (f"Version {v} unknown")
                 print ("Available versions are :")

@@ -3,4 +3,5 @@ ymir_versions:
 #  - cxx_version
 #  - bootstrap_v0.1
 #  - bootstrap_v1.0
-  - bootstrap_v1.0_alone
+  - bootstrap_v1.1
+  - bootstrap_v1.1_alone
