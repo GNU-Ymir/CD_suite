@@ -38,4 +38,5 @@ class Builder :
                 print ("- 'cxx_version'")
                 print ("- 'bootstrap_v0.1' (depends on version_cxx)")
                 print ("- 'bootstrap_v1.0' (depends on v0.1)")
-                print ("- 'bootstrap_v1.0_alone' (depends on v1.0, or v1.0_alone)")
+                print ("- 'bootstrap_v1.1' (depends on v1.0)")
+                print ("- 'bootstrap_v1.1_alone' (depends on v1.1 or v1.1_alone)")
