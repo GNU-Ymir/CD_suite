@@ -24,6 +24,7 @@ class CxxBuilder:
     # Run the builder and generate the
     def run (self) :
         print ("Building CXX version")
+        self._vm.destroy ()
         self._vm.boot ()
         self._installDependencies ()
         self._cloneRepo ()
@@ -94,7 +95,8 @@ class CxxBuilder:
 
     # Clone the midgard library
     def _cloneMidgard (self):
-        self._vm.runCmd (f"cd gcc/ && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
+        self._vm.runCmd (f"rm -rf /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
+        self._vm.runCmd (f"cd gcc/ && rm -rf ./midgard && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
         self._vm.runCmd (f"cd gcc/midgard && git fetch --all --tags")
         self._vm.runCmd (f"cd gcc/midgard && git checkout cxx_version")
 

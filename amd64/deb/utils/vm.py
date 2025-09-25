@@ -3,6 +3,7 @@
 import os
 import subprocess
 from subprocess import Popen, PIPE, STDOUT
+from pathlib import Path
 
 vagrant = """
 Vagrant.configure("2") do |config|
@@ -88,6 +89,13 @@ class VMLauncher :
 
     # Upload file to vagrant vm
     def downloadFile (self, fr, to) :
+
+        try :
+            path = Path(to)
+            os.mkdir (path.parent.absolute())
+        except Exception:
+            pass
+
         p = subprocess.Popen (f"vagrant scp :{fr} {to}",  stdout = PIPE, stderr = STDOUT, shell = True, cwd=f"./.{self._name}")
         while True:
             line = p.stdout.readline()

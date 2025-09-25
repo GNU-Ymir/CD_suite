@@ -41,7 +41,7 @@ class BootstrapBuilder:
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
-        self._vm.runCmd ("sudo pt-get install -y build-essential")
+        self._vm.runCmd ("sudo apt-get install -y build-essential")
         self._vm.uploadFile (f"../results/{self._prev}_gyc_{self._gcc_version}_amd64.deb", f"gyc_{self._prev}.deb")
         self._vm.runCmd (f"sudo dpkg -i ./gyc_{self._prev}.deb")
         self._vm.uploadFile (f"../results/{self._prev}_gyllir_amd64.deb", f"gyllir_{self._prev}.deb")
@@ -91,7 +91,9 @@ class BootstrapBuilder:
         self._vm.runCmd (f"mkdir -p gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}")
         self._vm.runCmd (f"cp gcc/gcc-install/usr/bin/x86_64-linux-gnu-gyc-{self._gcc_major_version} gcc/gcc-bin/usr/bin/")
         self._vm.runCmd (f"cp gcc/gcc-install/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/ymir1 gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/ymir1")
+        self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && rm gyc-{self._gcc_major_version}")
         self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s x86_64-linux-gnu-gyc-{self._gcc_major_version} gyc-{self._gcc_major_version}")
+        self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && rm gyc")
         self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s gyc-{self._gcc_major_version} gyc")
         self._vm.runCmd (f"mkdir -p gcc/gcc-bin/DEBIAN")
 
@@ -110,6 +112,7 @@ class BootstrapBuilder:
 
     # Clone the midgard library
     def _cloneMidgard (self):
+        self._vm.runCmd (f"cd gcc/ && rm -rf midgard")
         self._vm.runCmd (f"cd gcc/ && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
         self._vm.runCmd (f"cd gcc/midgard && git fetch --all --tags")
         self._vm.runCmd (f"cd gcc/midgard && git checkout {self._version}")
@@ -131,5 +134,11 @@ class BootstrapBuilder:
     def _createFinalDebFile (self):
         self._vm.runCmd (f"mkdir -p /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/{self._version[1:]}")
         self._vm.runCmd (f"cd gcc/midgard/midgard && cp -r * /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/{self._version[1:]}")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && rm libgymidgard-debug.a")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && ln -s libgymidgard-debug_{self._version[1:]}.a libgymidgard-debug.a")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && rm libgymidgard-release.a")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && ln -s libgymidgard-release_{self._version[1:]}.a libgymidgard-release.a")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && rm libgymidgard-tests.a")
+        self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && ln -s libgymidgard-tests_{self._version[1:]}.a libgymidgard-tests.a")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
         self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb")
