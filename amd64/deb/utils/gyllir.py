@@ -28,6 +28,7 @@ class GyllirBuilder:
         self._make ()
         self._createDebFile ()
         self._vm.halt ()
+        self._vm.destroy ()
 
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):

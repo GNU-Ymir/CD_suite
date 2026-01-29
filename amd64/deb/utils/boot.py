@@ -35,7 +35,8 @@ class BootstrapBuilder:
         self._createFinalDebFile ()
 
         self._vm.halt ()
-
+        self._vm.destroy ()
+        
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
