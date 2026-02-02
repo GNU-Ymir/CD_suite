@@ -40,7 +40,7 @@ class CxxBuilder:
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
+        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
 
@@ -57,8 +57,8 @@ class CxxBuilder:
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc && git clone https://github.com/GNU-Ymir/gymir.git ymir")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git fetch --all")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git checkout cxx_version")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git pull origin cxx_version")
+        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git checkout cxx")
+        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git pull origin cxx")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && touch lang.opt.urls")
 
         self._vm.runCmd ("cd gcc/gcc-src/ && ./contrib/download_prerequisites")
@@ -99,7 +99,7 @@ class CxxBuilder:
         self._vm.runCmd (f"rm -rf /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
         self._vm.runCmd (f"cd gcc/ && rm -rf ./midgard && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
         self._vm.runCmd (f"cd gcc/midgard && git fetch --all --tags")
-        self._vm.runCmd (f"cd gcc/midgard && git checkout cxx_version")
+        self._vm.runCmd (f"cd gcc/midgard && git checkout cxx")
 
 
     # Build the midgard library

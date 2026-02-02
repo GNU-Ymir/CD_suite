@@ -9,24 +9,24 @@ import os
 
 
 urlGyllir = {
-    "cxx" : "https://github.com/GNU-Ymir/Gyllir/releases/download/v_cxx/cxx_gyllir_amd64.deb",
-    "v0.1" : "https://github.com/GNU-Ymir/Gyllir/releases/download/v0.1_tag/v0.1_gyllir_amd64.deb",
-    "v1.0" : "https://github.com/GNU-Ymir/Gyllir/releases/download/v1.0_tag/v1.0_gyllir_amd64.deb",
-    "v1.1" : "https://github.com/GNU-Ymir/Gyllir/releases/download/v1.1.0/v1.1_gyllir_amd64.deb"
+    "cxx" : "https://github.com/GNU-Ymir/Gyllir/releases/download/cxx/cxx_gyllir_amd64.deb",
+    "v0.1" : "https://github.com/GNU-Ymir/Gyllir/releases/download/0.1.0/v0.1_gyllir_amd64.deb",
+    "v1.0" : "https://github.com/GNU-Ymir/Gyllir/releases/download/1.0.0/v1.0_gyllir_amd64.deb",
+    "v1.1" : "https://github.com/GNU-Ymir/Gyllir/releases/download/1.1.0/v1.1_gyllir_amd64.deb"
 }
 
 urlGyc = {
     "v1.1" : {
-        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/v1.1.0/v1.1_gyc_13.2.0_amd64.deb" 
+        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/1.1.0/v1.1_gyc_13.2.0_amd64.deb" 
     },
     "v0.1" : {
-        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/v0.1_tag/v0.1_gyc_13.2.0_amd64.deb" 
+        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/0.1.0/v0.1_gyc_13.2.0_amd64.deb" 
     },
     "v1.0" : {
-        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/v1.0_tag/v1.0_gyc_13.2.0_amd64.deb" 
+        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/1.0.0/v1.0_gyc_13.2.0_amd64.deb" 
     },    
     "cxx" : {
-        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/cxx_version_13.2.0/cxx_gyc_13.2.0_amd64.deb" 
+        "13.2.0" : "https://github.com/GNU-Ymir/gymir/releases/download/cxx/cxx_gyc_13.2.0_amd64.deb" 
     }
 }
 
@@ -72,23 +72,27 @@ class Builder :
         for v in self._versions:
             if v == "cxx_version":
                 utils.cxx.CxxBuilder (self._gcc_version).run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "cxx").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "cxx", "cxx").run ()
             elif v == "bootstrap_v0.1" :
                 self.ensureVersionPresent ("cxx", self._gcc_version)
-                utils.boot.BootstrapBuilder (self._gcc_version, "cxx", "v0.1").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "v0.1").run ()
+                utils.boot.BootstrapBuilder (self._gcc_version, "cxx", "v0.1", "0.1.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v0.1", "0.1.0").run ()
             elif v == "bootstrap_v1.0":
                 self.ensureVersionPresent ("v0.1", self._gcc_version)
-                utils.boot.BootstrapBuilder (self._gcc_version, "v0.1", "v1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.0").run ()
+                utils.boot.BootstrapBuilder (self._gcc_version, "v0.1", "v1.0", "1.0.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.0", "1.0.0").run ()
             elif v == "bootstrap_v1.1":
                 self.ensureVersionPresent ("v1.0", self._gcc_version)
-                utils.boot.BootstrapBuilder (self._gcc_version, "v1.0", "v1.1").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1").run ()
+                utils.boot.BootstrapBuilder (self._gcc_version, "v1.0", "v1.1", "1.1.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1", "1.1.0").run ()                
             elif v == "bootstrap_v1.1_alone":
                 self.ensureVersionPresent ("v1.1", self._gcc_version)
-                utils.boot.BootstrapBuilder (self._gcc_version, "v1.1", "v1.1").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1").run ()
+                utils.boot.BootstrapBuilder (self._gcc_version, "v1.1", "v1.1", "1.1.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "v1.1", "1.1.0").run ()
+            elif v == "dev" :
+                self.ensureVersionPresent ("v1.1", self._gcc_version)
+                utils.boot.BootstrapBuilder (self._gcc_version, prev = "v1.1", version = "v1.2", tag = "dev", rename = "dev").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, version = "dev", tag = "dev").run ()
             else:
                 print (f"Version {v} unknown")
                 print ("Available versions are :")

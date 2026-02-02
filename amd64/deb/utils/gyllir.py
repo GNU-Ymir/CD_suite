@@ -12,11 +12,12 @@ Description: gnu ymir project manager
 
 
 class GyllirBuilder:
-    def __init__ (self, gcc_version, version):
+    def __init__ (self, gcc_version, gyc_version, tag):
         self._gcc_version = gcc_version
         self._gcc_major_version = gcc_version.split (".")[0]
-        self._version = version
-        self._vm = utils.vm.VMLauncher (version)
+        self._version = gyc_version
+        self._tag = tag
+        self._vm = utils.vm.VMLauncher (self._version)
 
     # Run the builder and generate the
     def run (self) :
@@ -33,7 +34,7 @@ class GyllirBuilder:
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
+        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
         self._vm.uploadFile (f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
@@ -43,12 +44,8 @@ class GyllirBuilder:
     def _cloneRepo (self):
         self._vm.runCmd ("git clone https://github.com/GNU-Ymir/Gyllir.git gyllir")
         self._vm.runCmd ("cd gyllir && git fetch --all --tags")
-        if (self._version == "cxx"):
-            self._vm.runCmd (f"cd gyllir && git checkout cxx_version")
-            self._vm.runCmd (f"cd gyllir && git pull origin cxx_version")
-        else:
-            self._vm.runCmd (f"cd gyllir && git checkout {self._version}")
-            self._vm.runCmd (f"cd gyllir && git pull origin {self._version}")
+        self._vm.runCmd (f"cd gyllir && git checkout {self._tag}")
+        self._vm.runCmd (f"cd gyllir && git pull origin {self._tag}")
 
         self._vm.runCmd ("cd gyllir && mkdir .build")
         self._vm.runCmd ("cd gyllir/.build && cmake ..")

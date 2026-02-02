@@ -13,12 +13,20 @@ Depends: g++-{GCC_MAJOR_VERSION} (>= {GCC_MAJOR_VERSION}), gcc-{GCC_MAJOR_VERSIO
 
 
 class BootstrapBuilder:
-    def __init__ (self, gcc_version, prev, version):
+    
+    def __init__ (self, gcc_version, prev, version, tag, rename = ""):
         self._gcc_version = gcc_version
         self._gcc_major_version = gcc_version.split (".")[0]
         self._prev = prev
         self._version = version
+        self._tag = tag
         self._vm = utils.vm.VMLauncher (f"boot_{self._version}")
+        self._version_name = self._version
+        
+        if rename != "":
+            self._version_name = rename
+        
+
 
     # Run the builder and generate the
     def run (self) :
@@ -40,7 +48,7 @@ class BootstrapBuilder:
     # Install the dependencies required by the cxx builder
     def _installDependencies (self):
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake emacs patchelf libdwarf-dev")
+        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev")
         self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
         self._vm.runCmd ("sudo apt-get install -y build-essential")
         self._vm.uploadFile (f"../results/{self._prev}_gyc_{self._gcc_version}_amd64.deb", f"gyc_{self._prev}.deb")
@@ -60,14 +68,14 @@ class BootstrapBuilder:
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc && git clone https://github.com/GNU-Ymir/gymir.git ymir")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git fetch --all")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git checkout {self._version}")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git pull origin {self._version}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git checkout {self._tag}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir && git pull origin {self._tag}")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && touch lang.opt.urls")
 
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git clone https://github.com/GNU-Ymir/bootstrap.git bootstrap")
         self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir/bootstrap && git fetch --all tags")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git checkout {self._version}")
-        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git pull origin {self._version}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git checkout {self._tag}")
+        self._vm.runCmd (f"cd gcc/gcc-src/gcc/ymir/bootstrap && git pull origin {self._tag}")
 
         self._vm.runCmd ("cd gcc/gcc-src/ && ./contrib/download_prerequisites")
 
@@ -116,8 +124,8 @@ class BootstrapBuilder:
         self._vm.runCmd (f"cd gcc/ && rm -rf midgard")
         self._vm.runCmd (f"cd gcc/ && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
         self._vm.runCmd (f"cd gcc/midgard && git fetch --all --tags")
-        self._vm.runCmd (f"cd gcc/midgard && git checkout {self._version}")
-        self._vm.runCmd (f"cd gcc/midgard && git pull origin {self._version}")
+        self._vm.runCmd (f"cd gcc/midgard && git checkout {self._tag}")
+        self._vm.runCmd (f"cd gcc/midgard && git pull origin {self._tag}")
 
 
     # Build the midgard library
@@ -142,4 +150,4 @@ class BootstrapBuilder:
         self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && rm libgymidgard-tests.a")
         self._vm.runCmd (f"cd /home/vagrant/gcc/gcc-bin/usr/lib && ln -s libgymidgard-tests_{self._version[1:]}.a libgymidgard-tests.a")
         self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb")
+        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/{self._version_name}_gyc_{self._gcc_version}_amd64.deb")
