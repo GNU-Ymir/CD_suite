@@ -1,119 +1,81 @@
 #!/usr/bin/env python3
 
-import utils.vm
+import docker
+import json
+import click
+import tarfile
+import os
 
-CONTROL = """
-Package: gyc-{GCC_MAJOR_VERSION}
-Version: {GCC_VERSION}
-Maintainer: ecadorel
-Architecture: amd64
-Description: gnu ymir compiler
-Depends: g++-{GCC_MAJOR_VERSION} (>= {GCC_MAJOR_VERSION}), gcc-{GCC_MAJOR_VERSION} (>= {GCC_MAJOR_VERSION}), libgc-dev, libdwarf-dev
-"""
-
-#
-#
-#
 class CxxBuilder:
-    def __init__ (self, gcc_version):
-        self._gcc_version = gcc_version
-        self._gcc_major_version = gcc_version.split (".")[0]
-        self._vm = utils.vm.VMLauncher ("cxx")
-        pass
-
-    # Run the builder and generate the
-    def run (self) :
-        print ("Building CXX version")
-        self._vm.destroy ()
-        self._vm.boot ()
-        self._installDependencies ()
-        self._cloneRepo ()
-        self._configureBuild ()
-        self._make ()
-        self._createFirstDebFile ()
-        self._cloneMidgard ()
-        self._buildMidgard ()
-        self._createFinalDebFile ()
-        self._vm.halt ()
-        self._vm.destroy ()
+    def __init__(self, gcc_version: str):    
+        self.api = docker.APIClient()
+        self.client = docker.from_env()
+        self.gcc_version: str = gcc_version
+                
+        self.major = gcc_version
+        if gcc_version.find (".") != -1:
+            self.major = gcc_version[0:gcc_version.find (".")]        
+                
         
-    # Install the dependencies required by the cxx builder
-    def _installDependencies (self):
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
-        self._vm.runCmd ("sudo apt-get install -y build-essential")
+    def run(self):
+        self.createCloneImage ()
+        self.buildGyc ()
+        self.retreiveDebFile ()
+        
 
+    def createCloneImage(self):
+        generator = self.api.build(
+            path="jobs/clone_gcc/.",          # directory containing your Dockerfile
+            tag="gyc:gcc_clone"            
+        )
 
-    # Clone the GCC repository
-    def _cloneRepo (self):
-        self._vm.runCmd ("mkdir -p gcc")
-        self._vm.runCmd ("mkdir -p gcc/gcc-src")
-        self._vm.runCmd ("mkdir -p gcc/gcc-build")
-        self._vm.runCmd ("mkdir -p gcc/gcc-bin")
-        self._vm.runCmd ("cd gcc/ && git clone --depth=1 git://gcc.gnu.org/git/gcc.git gcc-src")
-        self._vm.runCmd ("cd gcc/gcc-src && git fetch --tags --depth=1")
-        self._vm.runCmd (f"cd gcc/gcc-src && git switch releases/gcc-{self._gcc_version} --detach")
+        self.showLogs(generator)        
 
-        self._vm.runCmd ("cd gcc/gcc-src/gcc && git clone https://github.com/GNU-Ymir/gymir.git ymir")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git fetch --all")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git checkout cxx")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && git pull origin cxx")
-        self._vm.runCmd ("cd gcc/gcc-src/gcc/ymir && touch lang.opt.urls")
+    def buildGyc(self):
+        
+        generator = self.api.build(
+            path="jobs/cxx_build/",          
+            tag="gyc:final_cxx_deb",
+            buildargs={
+                "GCC_VERSION" : self.gcc_version,
+                "GCC_MAJOR_VERSION" : self.major,
+                "YMIR_VERSION": "cxx",
+                "ARCH": "amd64"
+            }
+        )
 
-        self._vm.runCmd ("cd gcc/gcc-src/ && ./contrib/download_prerequisites")
+        self.showLogs(generator)        
+                
+    def retreiveDebFile(self):        
+        container = self.client.containers.create(
+            image="gyc:final_cxx_deb",
+            name="extract",
+            command=""   # important for scratch/minimal images
+        )
+        
+        print("Created container:", container.id)
 
-    # Configure the build
-    def _configureBuild (self) :
-        self._vm.runCmd (f"cd gcc/gcc-build && ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-{self._gcc_major_version} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap")
-        self._vm.runCmd ("cd gcc/gcc-build && rm gcc/ymir/*.o")
-        self._vm.runCmd ("cd gcc/gcc-build && rm prev-gcc/ymir/*.o")
+        bits, stat = container.get_archive(f"/gyc-{self.major}_cxx_amd64.deb")
 
-    # Make the compiler
-    def _make (self):
-        self._vm.runCmd ("cd gcc/gcc-build && make")
-        self._vm.runCmd ("cd gcc/gcc-build && make install DESTDIR=/home/vagrant/gcc/gcc-install")
+        with open(f"results/gyc-{self.major}_cxx_amd64.tar", "wb") as f:
+            for chunk in bits:
+                f.write(chunk)
+                
+        container.remove ()
+            
+        with tarfile.open(f"results/gyc-{self.major}_cxx_amd64.tar") as tar:
+            tar.extractall("results/")
+        os.remove (f"results/gyc-{self.major}_cxx_amd64.tar")
 
-    # Create the first deb file before midgard build
-    def _createFirstDebFile (self):
-        self._vm.runCmd ("mkdir -p gcc/gcc-bin/usr/bin")
-        self._vm.runCmd (f"mkdir -p gcc/gcc-bin/usr/lib/gcc/x86_64-linux-gnu/{self._gcc_major_version}")
-        self._vm.runCmd (f"mkdir -p gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}")
-        self._vm.runCmd (f"cp gcc/gcc-install/usr/bin/x86_64-linux-gnu-gyc-{self._gcc_major_version} gcc/gcc-bin/usr/bin/")
-        self._vm.runCmd (f"cp gcc/gcc-install/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/ymir1 gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/ymir1")
-        self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s x86_64-linux-gnu-gyc-{self._gcc_major_version} gyc-{self._gcc_major_version}")
-        self._vm.runCmd (f"cd gcc/gcc-bin/usr/bin && ln -s gyc-{self._gcc_major_version} gyc")
-        self._vm.runCmd (f"mkdir -p gcc/gcc-bin/DEBIAN")
-
-        with open (".cxx/control", "w") as f:
-            c = CONTROL.replace ("{GCC_MAJOR_VERSION}", self._gcc_major_version)
-            c = c.replace ("{GCC_VERSION}", self._gcc_version)
-            f.write (c)
-
-        self._vm.uploadFile ("control", "gcc/gcc-bin/DEBIAN/control")
-        self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.runCmd (f"sudo dpkg -i gcc/gcc-bin.deb")
-
-    # Clone the midgard library
-    def _cloneMidgard (self):
-        self._vm.runCmd (f"rm -rf /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd (f"cd gcc/ && rm -rf ./midgard && git clone https://github.com/GNU-Ymir/yruntime.git midgard")
-        self._vm.runCmd (f"cd gcc/midgard && git fetch --all --tags")
-        self._vm.runCmd (f"cd gcc/midgard && git checkout cxx")
-
-
-    # Build the midgard library
-    def _buildMidgard (self):
-        self._vm.runCmd (f"cd gcc/midgard && mkdir .build")
-        self._vm.runCmd (f"cd gcc/midgard/.build && cmake ..")
-        self._vm.runCmd (f"cd gcc/midgard/.build && make -j4")
-        self._vm.runCmd (f"cd gcc/midgard/.build && make install DESTDIR=/home/vagrant/gcc/gcc-bin")
-
-    # Create the final deb file and download it
-    def _createFinalDebFile (self):
-        self._vm.runCmd (f"mkdir -p /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd (f"cd gcc/midgard && cp -r core /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd (f"cd gcc/midgard && cp -r std /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd (f"cd gcc/midgard && cp -r etc /home/vagrant/gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/{self._gcc_major_version}/include/ymir/")
-        self._vm.runCmd ("dpkg --build gcc/gcc-bin")
-        self._vm.downloadFile ("gcc/gcc-bin.deb", f"../results/cxx_gyc_{self._gcc_version}_amd64.deb")
+    def showLogs(self, generator):
+        while True:
+            try:
+                output = generator.__next__()                                    
+                json_output = json.loads(output)
+                if 'stream' in json_output:
+                    click.echo(json_output['stream'].strip('\n'))
+            except StopIteration as r:                
+                click.echo("Docker image build complete.")
+                break
+            except ValueError:
+                click.echo("Error parsing output from docker image build: %s" % output)

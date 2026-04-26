@@ -1,73 +1,76 @@
 #!/usr/bin/env python3
 
-import utils.vm
 
-CONTROL = """
-Package: gyllir
-Version: 0.1.0
-Architecture: amd64
-Maintainer: ecadorel
-Description: gnu ymir project manager
-"""
-
+import docker
+import json
+import click
+import tarfile
+import os
+import shutil
 
 class GyllirBuilder:
-    def __init__ (self, gcc_version, gyc_version, tag):
-        self._gcc_version = gcc_version
-        self._gcc_major_version = gcc_version.split (".")[0]
-        self._version = gyc_version
-        self._tag = tag
-        self._vm = utils.vm.VMLauncher (self._version)
 
-    # Run the builder and generate the
-    def run (self) :
-        print (f"Building Gyllir version {self._version}")
-        self._vm.destroy ()
-        self._vm.boot ()
-        self._installDependencies ()
-        self._cloneRepo ()
-        self._make ()
-        self._createDebFile ()
-        self._vm.halt ()
-        self._vm.destroy ()
+    def __init__(self, gcc_version: str, ymir_version: str):
+        self.api = docker.APIClient()
+        self.client = docker.from_env()
+        self.gcc_version: str = gcc_version
+        self.ymir_version: str = ymir_version
+                
+        self.major = gcc_version
+        if gcc_version.find (".") != -1:
+            self.major = gcc_version[0:gcc_version.find (".")]
 
-    # Install the dependencies required by the cxx builder
-    def _installDependencies (self):
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev")
-        self._vm.runCmd ("sudo apt-get install -y --no-install-recommends gcc-multilib g++-multilib libgc-dev libgmp-dev libbfd-dev zlib1g-dev gdc")
-        self._vm.runCmd ("sudo apt-get install -y build-essential")
-        self._vm.uploadFile (f"../results/{self._version}_gyc_{self._gcc_version}_amd64.deb", "gyc.deb")
-        self._vm.runCmd ("sudo dpkg -i ./gyc.deb")
+    def run(self):
+        self.buildGyllir()
+        self.retreiveDebFile()
 
-    # Clone the gyllir repo
-    def _cloneRepo (self):
-        self._vm.runCmd ("git clone https://github.com/GNU-Ymir/Gyllir.git gyllir")
-        self._vm.runCmd ("cd gyllir && git fetch --all --tags")
-        self._vm.runCmd (f"cd gyllir && git checkout {self._tag}")
-        self._vm.runCmd (f"cd gyllir && git pull origin {self._tag}")
+    def buildGyllir(self):
+        shutil.copy (f"results/gyc-{self.major}_{self.ymir_version}_amd64.deb", "jobs/gyllir_build/gyc.deb")
+        generator = self.api.build(
+            path="jobs/gyllir_build/.",          # directory containing your Dockerfile
+            tag=f"gyllir:from_{self.ymir_version}",
+            buildargs={
+                "GCC_VERSION": self.gcc_version,
+                "GCC_MAJOR_VERSION": self.major,
+                "YMIR_VERSION": self.ymir_version,
+                "ARCH": "amd64"
+            }
+        )        
+        
+        self.showLogs(generator)
+        os.remove ("jobs/gyllir_build/gyc.deb")
 
-        self._vm.runCmd ("cd gyllir && mkdir .build")
-        self._vm.runCmd ("cd gyllir/.build && cmake ..")
+    def retreiveDebFile(self):        
+        container = self.client.containers.create(
+            image=f"gyllir:from_{self.ymir_version}",            
+            name="extract",
+            command=""   # important for scratch/minimal images
+        )
+        
+        print("Created container:", container.id)
 
-    # Make the compiler
-    def _make (self) :
-        self._vm.runCmd ("mkdir install")
-        self._vm.runCmd ("cd gyllir/.build && make -j4")
-        self._vm.runCmd ("cd gyllir/.build && make install DESTDIR=/home/vagrant/install")
+        bits, stat = container.get_archive(f"/gyllir_{self.ymir_version}_amd64.deb")
 
-    # Create the deb file
-    def _createDebFile (self):
-        self._vm.runCmd ("mkdir -p install/etc/bash_completion.d")
-        self._vm.runCmd ("mkdir -p install/usr/bin")
-        self._vm.runCmd ("mkdir -p install/DEBIAN")
-        self._vm.runCmd ("cp gyllir/bash/_gyllir /home/vagrant/install/etc/bash_completion.d")
-        self._vm.runCmd ("cp gyllir/.build/gyllir /home/vagrant/install/usr/bin/")
-        self._vm.runCmd ("chmod +x /home/vagrant/install/usr/bin/gyllir")
-        with open (f".{self._version}/control", "w") as f:
-            f.write (CONTROL)
+        with open(f"results/gyllir_{self.ymir_version}_amd64.tar", "wb") as f:
+            for chunk in bits:
+                f.write(chunk)
+                
+        container.remove ()
+            
+        with tarfile.open(f"results/gyllir_{self.ymir_version}_amd64.tar") as tar:
+            tar.extractall("results/")
+        os.remove (f"results/gyllir_{self.ymir_version}_amd64.tar")        
 
-        self._vm.uploadFile ("control", "install/DEBIAN/control")
-        self._vm.runCmd ("dpkg --build install")
+    def showLogs(self, generator):
+        while True:
+            try:
+                output = generator.__next__()                                    
+                json_output = json.loads(output)
+                if 'stream' in json_output:
+                    click.echo(json_output['stream'].strip('\n'))
+            except StopIteration as r:                
+                click.echo("Docker image build complete.")
+                break
+            except ValueError:
+                click.echo("Error parsing output from docker image build: %s" % output)
 
-        self._vm.downloadFile ("install.deb", f"../results/{self._version}_gyllir_amd64.deb")
