@@ -6,6 +6,7 @@ import os
 
 import utils.cxx
 import utils.gyllir
+import utils.bootstrap
 
 class Builder:
     
@@ -25,8 +26,17 @@ class Builder:
 
         for v in self._versions:
             if v == "cxx_version":
-                #utils.cxx.CxxBuilder (self._gcc_version).run ()
+                utils.cxx.CxxBuilder (self._gcc_version).run ()
                 utils.gyllir.GyllirBuilder (self._gcc_version, "cxx").run ()
+            elif v == "bootstrap_v0.1":
+                utils.bootstrap.VxxBuilder (self._gcc_version, "cxx", "0.1.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "0.1.0").run ()
+            elif v == "bootstrap_v1.0":
+                utils.bootstrap.VxxBuilder (self._gcc_version, "0.1.0", "1.0.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "1.0.0").run ()
+            elif v == "bootstrap_v1.1":
+                utils.bootstrap.VxxBuilder (self._gcc_version, "1.0.0", "1.1.0").run ()
+                utils.gyllir.GyllirBuilder (self._gcc_version, "1.1.0").run ()
                 
             else:
                 print (f"Version {v} unknown")

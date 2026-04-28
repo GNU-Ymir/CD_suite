@@ -29,17 +29,24 @@ ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
 
+ARG BREAK=0
 WORKDIR /gcc
 RUN git clone https://github.com/GNU-Ymir/Gyllir.git gyllir
 
 WORKDIR /gcc/gyllir
 RUN git fetch --all --tags
-RUN git checkout ${YMIR_VERSION}
+RUN set -e; \
+    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
+    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
+        git checkout "$BRANCH"; \
+    else \
+        git checkout "${YMIR_VERSION}"; \
+    fi
+
 RUN mkdir .build
 
 WORKDIR /gcc/gyllir/.build
 RUN cmake ..
-RUN make -j$(( $(nproc) - 1 ))
 RUN make install DESTDIR=/gcc/install
 
 WORKDIR /gcc/install
@@ -48,7 +55,7 @@ RUN mkdir -p /gcc/install/usr/bin
 RUN mkdir -p /gcc/install/DEBIAN
 RUN cp /gcc/gyllir/bash/_gyllir /gcc/install/etc/bash_completion.d/
 RUN cp /gcc/gyllir/.build/gyllir /gcc/install/usr/bin/
-RUN chmod +x /gcc/install/usr/bin/
+RUN chmod +x /gcc/install/usr/bin/gyllir
 
 ARG YMIR_VERSION_NUMBER
 WORKDIR /gcc/install/DEBIAN
