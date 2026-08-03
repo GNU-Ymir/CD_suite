@@ -23,27 +23,32 @@ class Builder:
         except Exception:
             pass
 
+        # Ubuntu base image is picked per GCC major: 13.x needs ubuntu 24.04 (ubuntu 26.04's
+        # libs are too new to build/run gcc-13.2.0 against), 15.x uses ubuntu 26.04.
+        UBUNTU_FOR_GCC13 = "24.04"
+        UBUNTU_FOR_GCC15 = "26.04"
+
         for v in self._versions:
             if v == "cxx_version":
-                # target gcc-13.2.0, compiled with gcc-13.2.0
-                utils.cxx.CxxBuilder ("13.2.0", "13.2.0").run ()
-                utils.gyllir.GyllirBuilder ("13.2.0", "cxx").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0, both on ubuntu 24.04
+                utils.cxx.CxxBuilder ("13.2.0", "13.2.0", UBUNTU_FOR_GCC13).run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "cxx", UBUNTU_FOR_GCC13).run ()
             elif v == "bootstrap_v0.1":
-                # target gcc-13.2.0, compiled with gcc-13.2.0
-                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "cxx", "0.1.0").run ()
-                utils.gyllir.GyllirBuilder ("13.2.0", "0.1.0").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0, both on ubuntu 24.04
+                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "cxx", "0.1.0", UBUNTU_FOR_GCC13, UBUNTU_FOR_GCC13).run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "0.1.0", UBUNTU_FOR_GCC13).run ()
             elif v == "bootstrap_v1.0":
-                # target gcc-13.2.0, compiled with gcc-13.2.0
-                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "0.1.0", "1.0.0").run ()
-                utils.gyllir.GyllirBuilder ("13.2.0", "1.0.0").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0, both on ubuntu 24.04
+                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "0.1.0", "1.0.0", UBUNTU_FOR_GCC13, UBUNTU_FOR_GCC13).run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "1.0.0", UBUNTU_FOR_GCC13).run ()
             elif v == "bootstrap_v1.1":
-                # target gcc-15.2.0, but still compiled with gcc-13.2.0
-                utils.bootstrap.VxxBuilder ("15.2.0", "13.2.0", "13.2.0", "1.0.0", "1.1.0").run ()
-                utils.gyllir.GyllirBuilder ("15.2.0", "1.1.0").run ()
+                # target gcc-15.2.0 (ubuntu 26.04), but still compiled with gcc-13.2.0 (ubuntu 24.04)
+                utils.bootstrap.VxxBuilder ("15.2.0", "13.2.0", "13.2.0", "1.0.0", "1.1.0", UBUNTU_FOR_GCC15, UBUNTU_FOR_GCC13).run ()
+                utils.gyllir.GyllirBuilder ("15.2.0", "1.1.0", UBUNTU_FOR_GCC15).run ()
             elif v == "bootstrap_v1.2":
-                # target gcc-15.2.0, compiled with gcc-15.2.0
-                utils.bootstrap.VxxBuilder ("15.2.0", "15.2.0", "15.2.0", "1.1.0", "1.2.0").run ()
-                #utils.gyllir.GyllirBuilder ("15.2.0", "1.2.0").run ()
+                # target gcc-15.2.0, compiled with gcc-15.2.0, both on ubuntu 26.04
+                utils.bootstrap.VxxBuilder ("15.2.0", "15.2.0", "15.2.0", "1.1.0", "1.2.0", UBUNTU_FOR_GCC15, UBUNTU_FOR_GCC15).run ()
+                #utils.gyllir.GyllirBuilder ("15.2.0", "1.2.0", UBUNTU_FOR_GCC15).run ()
 
             else:
                 print (f"Version {v} unknown")

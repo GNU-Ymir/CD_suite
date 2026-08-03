@@ -10,12 +10,13 @@ import shutil
 
 class GyllirBuilder:
 
-    def __init__(self, gcc_version: str, ymir_version: str):
+    def __init__(self, gcc_version: str, ymir_version: str, ubuntu_version: str):
         self.api = docker.APIClient()
         self.client = docker.from_env()
         self.gcc_version: str = gcc_version
         self.ymir_version: str = ymir_version
-                
+        self.ubuntu_version: str = ubuntu_version
+
         self.major = gcc_version
         if gcc_version.find (".") != -1:
             self.major = gcc_version[0:gcc_version.find (".")]
@@ -32,10 +33,11 @@ class GyllirBuilder:
             buildargs={
                 "GCC_VERSION": self.gcc_version,
                 "GCC_MAJOR_VERSION": self.major,
+                "UBUNTU_VERSION": self.ubuntu_version,
                 "YMIR_VERSION": self.ymir_version,
                 "ARCH": "amd64"
             }
-        )        
+        )
         
         self.showLogs(generator)
         os.remove ("jobs/gyllir_build/gyc.deb")

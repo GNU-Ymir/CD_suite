@@ -3,8 +3,9 @@ ARG GCC_MAJOR_VERSION="15"
 ARG YMIR_VERSION="cxx"
 ARG YMIR_VERSION_NUMBER="0.1.0"
 ARG ARCH="amd64"
+ARG UBUNTU_VERSION="26.04"
 
-FROM ubuntu:26.04 AS install_gyc
+FROM ubuntu:${UBUNTU_VERSION} AS install_gyc
 
 ARG GCC_VERSION
 ARG YMIR_VERSION
@@ -16,7 +17,7 @@ RUN mkdir /gcc/install
 WORKDIR /gcc
 
 RUN apt-get update
-RUN apt-get install -y cmake gcc g++ libtool cmake patchelf libdwarf-dev git libgc-dev
+RUN apt-get install -y cmake gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} libtool cmake patchelf libdwarf-dev git libgc-dev
 
 COPY gyc.deb .
 RUN dpkg -i gyc.deb

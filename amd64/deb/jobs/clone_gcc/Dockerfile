@@ -1,4 +1,5 @@
-FROM ubuntu:26.04 AS clone_gcc
+ARG UBUNTU_VERSION="26.04"
+FROM ubuntu:${UBUNTU_VERSION} AS clone_gcc
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends sudo pkg-config git build-essential software-properties-common aspcud unzip curl wget

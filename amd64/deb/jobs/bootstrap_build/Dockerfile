@@ -3,8 +3,10 @@ ARG GCC_MAJOR_VERSION="15"
 ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="0.1.0"
 ARG ARCH="amd64"
+ARG CLONE_IMAGE="gyc:gcc_clone_26.04"
+ARG UBUNTU_VERSION="26.04"
 
-FROM gyc:gcc_clone AS fetch_gcc_version
+FROM ${CLONE_IMAGE} AS fetch_gcc_version
 
 ARG GCC_VERSION
 ARG YMIR_VERSION
@@ -99,7 +101,7 @@ RUN find gcc-bin
 RUN cat gcc-bin/DEBIAN/control
 RUN dpkg --build gcc-bin
 
-FROM ubuntu:26.04 AS build_midgard
+FROM ubuntu:${UBUNTU_VERSION} AS build_midgard
 
 ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
@@ -109,7 +111,7 @@ ARG YMIR_SHORT_VERSION=${YMIR_VERSION%.*}
 WORKDIR /gcc
 
 RUN apt-get update
-RUN apt-get install -y gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
+RUN apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
 
 RUN mkdir gcc-bin
 RUN mkdir -p gcc-bin/DEBIAN

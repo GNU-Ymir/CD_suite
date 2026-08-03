@@ -8,7 +8,7 @@ import os
 import shutil
 
 class VxxBuilder:
-    def __init__(self, gcc_version: str, compiler_version: str, prev_gcc_version: str, prev_version: str, ymir_version: str):
+    def __init__(self, gcc_version: str, compiler_version: str, prev_gcc_version: str, prev_version: str, ymir_version: str, target_ubuntu_version: str, compiler_ubuntu_version: str):
         self.api = docker.APIClient()
         self.client = docker.from_env()
         self.gcc_version: str = gcc_version
@@ -16,6 +16,8 @@ class VxxBuilder:
         self.prev_gcc_version: str = prev_gcc_version
         self.ymir_version: str = ymir_version
         self.prev_version: str = prev_version
+        self.target_ubuntu_version: str = target_ubuntu_version
+        self.compiler_ubuntu_version: str = compiler_ubuntu_version
 
         self.major = gcc_version
         if gcc_version.find (".") != -1:
@@ -29,19 +31,24 @@ class VxxBuilder:
         if prev_gcc_version.find (".") != -1:
             self.prev_major = prev_gcc_version[0:prev_gcc_version.find (".")]
 
+        self.clone_image = f"gyc:gcc_clone_{compiler_ubuntu_version}"
+
     def run(self):
-        #self.createCloneImage ()
+        self.createCloneImage ()
         self.buildGyc ()
         self.retreiveDebFile ()
-        
+
 
     def createCloneImage(self):
         generator = self.api.build(
             path="jobs/clone_gcc/.",          # directory containing your Dockerfile
-            tag="gyc:gcc_clone"            
+            tag=self.clone_image,
+            buildargs={
+                "UBUNTU_VERSION" : self.compiler_ubuntu_version
+            }
         )
 
-        self.showLogs(generator)        
+        self.showLogs(generator)
 
     def buildGyc(self):
         shutil.copy (f"results/gyc-{self.prev_major}_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyc.deb")
@@ -54,6 +61,8 @@ class VxxBuilder:
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
                 "COMPILER_MAJOR_VERSION" : self.compiler_major,
+                "CLONE_IMAGE" : self.clone_image,
+                "UBUNTU_VERSION" : self.target_ubuntu_version,
                 "YMIR_VERSION": self.ymir_version,
                 "ARCH": "amd64"
             }

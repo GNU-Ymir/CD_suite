@@ -3,8 +3,10 @@ ARG GCC_MAJOR_VERSION="15"
 ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="cxx"
 ARG ARCH="amd64"
+ARG CLONE_IMAGE="gyc:gcc_clone_26.04"
+ARG UBUNTU_VERSION="26.04"
 
-FROM gyc:gcc_clone AS fetch_gcc_version
+FROM ${CLONE_IMAGE} AS fetch_gcc_version
 
 ARG GCC_VERSION
 ARG YMIR_VERSION
@@ -78,7 +80,7 @@ RUN find gcc-bin
 RUN cat gcc-bin/DEBIAN/control
 RUN dpkg --build gcc-bin
 
-FROM ubuntu:24.04 AS build_midgard
+FROM ubuntu:${UBUNTU_VERSION} AS build_midgard
 
 ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
