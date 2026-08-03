@@ -7,16 +7,20 @@ import tarfile
 import os
 
 class CxxBuilder:
-    def __init__(self, gcc_version: str):    
+    def __init__(self, gcc_version: str, compiler_version: str):
         self.api = docker.APIClient()
         self.client = docker.from_env()
         self.gcc_version: str = gcc_version
-                
+        self.compiler_version: str = compiler_version
+
         self.major = gcc_version
         if gcc_version.find (".") != -1:
-            self.major = gcc_version[0:gcc_version.find (".")]        
-                
-        
+            self.major = gcc_version[0:gcc_version.find (".")]
+
+        self.compiler_major = compiler_version
+        if compiler_version.find (".") != -1:
+            self.compiler_major = compiler_version[0:compiler_version.find (".")]
+
     def run(self):
         self.createCloneImage ()
         self.buildGyc ()
@@ -39,6 +43,7 @@ class CxxBuilder:
             buildargs={
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
+                "COMPILER_MAJOR_VERSION" : self.compiler_major,
                 "YMIR_VERSION": "cxx",
                 "ARCH": "amd64"
             }

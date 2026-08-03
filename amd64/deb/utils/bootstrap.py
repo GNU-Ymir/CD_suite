@@ -8,18 +8,27 @@ import os
 import shutil
 
 class VxxBuilder:
-    def __init__(self, gcc_version: str, prev_version: str, ymir_version: str):    
+    def __init__(self, gcc_version: str, compiler_version: str, prev_gcc_version: str, prev_version: str, ymir_version: str):
         self.api = docker.APIClient()
         self.client = docker.from_env()
         self.gcc_version: str = gcc_version
+        self.compiler_version: str = compiler_version
+        self.prev_gcc_version: str = prev_gcc_version
         self.ymir_version: str = ymir_version
         self.prev_version: str = prev_version
-                
+
         self.major = gcc_version
         if gcc_version.find (".") != -1:
-            self.major = gcc_version[0:gcc_version.find (".")]        
-                
-        
+            self.major = gcc_version[0:gcc_version.find (".")]
+
+        self.compiler_major = compiler_version
+        if compiler_version.find (".") != -1:
+            self.compiler_major = compiler_version[0:compiler_version.find (".")]
+
+        self.prev_major = prev_gcc_version
+        if prev_gcc_version.find (".") != -1:
+            self.prev_major = prev_gcc_version[0:prev_gcc_version.find (".")]
+
     def run(self):
         #self.createCloneImage ()
         self.buildGyc ()
@@ -35,15 +44,16 @@ class VxxBuilder:
         self.showLogs(generator)        
 
     def buildGyc(self):
-        shutil.copy (f"results/gyc-{self.major}_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyc.deb")
+        shutil.copy (f"results/gyc-{self.prev_major}_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyc.deb")
         shutil.copy (f"results/gyllir_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyllir.deb")
-        
+
         generator = self.api.build(
-            path="jobs/bootstrap_build/",          
+            path="jobs/bootstrap_build/",
             tag=f"gyc:final_{self.ymir_version}_deb",
             buildargs={
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
+                "COMPILER_MAJOR_VERSION" : self.compiler_major,
                 "YMIR_VERSION": self.ymir_version,
                 "ARCH": "amd64"
             }

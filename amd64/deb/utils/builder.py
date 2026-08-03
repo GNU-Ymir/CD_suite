@@ -13,7 +13,6 @@ class Builder:
     def __init__ (self, config):
         with open(config, 'r') as file :
             self._cfg = yaml.safe_load (file)
-            self._gcc_version = self._cfg ["gcc_version"]
             self._versions = self._cfg ["ymir_versions"]
 
 
@@ -26,18 +25,26 @@ class Builder:
 
         for v in self._versions:
             if v == "cxx_version":
-                utils.cxx.CxxBuilder (self._gcc_version).run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "cxx").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0
+                utils.cxx.CxxBuilder ("13.2.0", "13.2.0").run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "cxx").run ()
             elif v == "bootstrap_v0.1":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "cxx", "0.1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "0.1.0").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0
+                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "cxx", "0.1.0").run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "0.1.0").run ()
             elif v == "bootstrap_v1.0":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "0.1.0", "1.0.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "1.0.0").run ()
+                # target gcc-13.2.0, compiled with gcc-13.2.0
+                utils.bootstrap.VxxBuilder ("13.2.0", "13.2.0", "13.2.0", "0.1.0", "1.0.0").run ()
+                utils.gyllir.GyllirBuilder ("13.2.0", "1.0.0").run ()
             elif v == "bootstrap_v1.1":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "1.0.0", "1.1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "1.1.0").run ()
-                
+                # target gcc-15.2.0, but still compiled with gcc-13.2.0
+                utils.bootstrap.VxxBuilder ("15.2.0", "13.2.0", "13.2.0", "1.0.0", "1.1.0").run ()
+                utils.gyllir.GyllirBuilder ("15.2.0", "1.1.0").run ()
+            elif v == "bootstrap_v1.2":
+                # target gcc-15.2.0, compiled with gcc-15.2.0
+                utils.bootstrap.VxxBuilder ("15.2.0", "15.2.0", "15.2.0", "1.1.0", "1.2.0").run ()
+                #utils.gyllir.GyllirBuilder ("15.2.0", "1.2.0").run ()
+
             else:
                 print (f"Version {v} unknown")
                 print ("Available versions are :")

@@ -1,5 +1,6 @@
 ARG GCC_VERSION="15"
 ARG GCC_MAJOR_VERSION="15"
+ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="cxx"
 ARG ARCH="amd64"
 
@@ -8,6 +9,10 @@ FROM gyc:gcc_clone AS fetch_gcc_version
 ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends gcc-${COMPILER_MAJOR_VERSION} g++-${COMPILER_MAJOR_VERSION}
 
 WORKDIR /gcc/gcc-src
 
@@ -19,7 +24,9 @@ RUN git clone https://github.com/GNU-Ymir/gymir.git ymir
 
 WORKDIR /gcc/gcc-src/gcc/ymir
 RUN git fetch --all
-RUN git checkout ${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION} 
+RUN git checkout ${YMIR_VERSION}
+
+RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
 
 RUN touch lang.opt.urls
 WORKDIR /gcc/gcc-src/
@@ -30,9 +37,10 @@ FROM fetch_gcc_version AS configure
 ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
 
 WORKDIR /gcc/gcc-build
-RUN ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
+RUN CC=gcc-${COMPILER_MAJOR_VERSION} CXX=g++-${COMPILER_MAJOR_VERSION} ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
 
 FROM configure AS make
 WORKDIR /gcc/gcc-build
@@ -70,7 +78,7 @@ RUN find gcc-bin
 RUN cat gcc-bin/DEBIAN/control
 RUN dpkg --build gcc-bin
 
-FROM ubuntu:26.04 AS build_midgard
+FROM ubuntu:24.04 AS build_midgard
 
 ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
@@ -79,7 +87,7 @@ ARG YMIR_VERSION
 WORKDIR /gcc
 
 RUN apt-get update
-RUN apt-get install -y gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
+RUN apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
 
 RUN mkdir gcc-bin
 RUN mkdir -p gcc-bin/DEBIAN
@@ -97,7 +105,7 @@ RUN git clone https://github.com/GNU-Ymir/yruntime.git
 
 WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
-RUN git checkout ${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}
+RUN git checkout ${YMIR_VERSION}
 RUN mkdir .build
 
 WORKDIR /gcc/yruntime/.build

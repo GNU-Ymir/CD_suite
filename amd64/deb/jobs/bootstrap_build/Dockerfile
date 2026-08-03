@@ -1,5 +1,6 @@
 ARG GCC_VERSION="15"
 ARG GCC_MAJOR_VERSION="15"
+ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="0.1.0"
 ARG ARCH="amd64"
 
@@ -8,11 +9,15 @@ FROM gyc:gcc_clone AS fetch_gcc_version
 ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
 
 COPY gyc.deb .
 COPY gyllir.deb .
 RUN dpkg -i gyc.deb
 RUN dpkg -i gyllir.deb
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends gcc-${COMPILER_MAJOR_VERSION} g++-${COMPILER_MAJOR_VERSION}
 
 RUN gyc --version
 RUN gyllir -h || true
@@ -35,7 +40,9 @@ RUN set -e; \
     else \
         git checkout "${YMIR_VERSION}"; \
     fi
-    
+
+RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
+
 RUN touch lang.opt.urls
 RUN git clone https://github.com/GNU-Ymir/bootstrap.git
 
@@ -50,10 +57,11 @@ FROM fetch_gcc_version AS configure
 ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
 
 ARG BREAK=0
 WORKDIR /gcc/gcc-build
-RUN ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
+RUN CC=gcc-${COMPILER_MAJOR_VERSION} CXX=g++-${COMPILER_MAJOR_VERSION} ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
 
 FROM configure AS make
 WORKDIR /gcc/gcc-build
