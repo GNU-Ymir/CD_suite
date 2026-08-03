@@ -35,13 +35,7 @@ RUN git clone https://github.com/GNU-Ymir/gymir.git ymir
 WORKDIR /gcc/gcc-src/gcc/ymir
 RUN git fetch --all
 
-RUN set -e; \
-    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
-    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
-        git checkout "$BRANCH"; \
-    else \
-        git checkout "${YMIR_VERSION}"; \
-    fi
+RUN git checkout "${YMIR_VERSION}";
 
 RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
 
@@ -93,7 +87,7 @@ RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
 
 WORKDIR /gcc/gcc-bin/DEBIAN
 COPY control.in /gcc/gcc-bin/DEBIAN/control
-RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control 
+RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
 RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
 
 WORKDIR /gcc
@@ -125,7 +119,7 @@ COPY --from=build_first_deb /gcc/gcc-bin.deb .
 RUN dpkg -i gcc-bin.deb
 
 ARG CACHE_BREAK=0
-RUN git clone https://github.com/GNU-Ymir/yruntime.git 
+RUN git clone https://github.com/GNU-Ymir/yruntime.git
 
 WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
@@ -145,7 +139,7 @@ RUN touch __lib_debug_.o
 RUN touch __lib_release_.o
 
 RUN cmake ..
-RUN make 
+RUN make
 RUN make install DESTDIR=/gcc/gcc-bin
 
 WORKDIR /gcc/yruntime/midgard
@@ -163,9 +157,9 @@ RUN ln -s libgymidgard-release_${YMIR_SHORT_VERSION}.a libgymidgard-release.a
 WORKDIR /gcc/gcc-bin/DEBIAN
 
 COPY control.in /gcc/gcc-bin/DEBIAN/control
-RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control 
+RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
 RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
- 
+
 WORKDIR /gcc/gcc-bin/usr/bin
 RUN ln -s x86_64-linux-gnu-gyc-${GCC_MAJOR_VERSION} gyc-${GCC_MAJOR_VERSION}
 RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
@@ -173,7 +167,7 @@ RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
 WORKDIR /gcc
 RUN dpkg --build gcc-bin
 
-ARG ARCH 
+ARG ARCH
 RUN mv gcc-bin.deb /gyc-${GCC_MAJOR_VERSION}_${YMIR_VERSION}_${ARCH}.deb
 
 FROM scratch AS export

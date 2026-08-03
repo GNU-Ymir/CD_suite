@@ -36,13 +36,7 @@ RUN git clone https://github.com/GNU-Ymir/Gyllir.git gyllir
 
 WORKDIR /gcc/gyllir
 RUN git fetch --all --tags
-RUN set -e; \
-    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
-    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
-        git checkout "$BRANCH"; \
-    else \
-        git checkout "${YMIR_VERSION}"; \
-    fi
+RUN git checkout "${YMIR_VERSION}";
 
 RUN mkdir .build
 
@@ -61,8 +55,8 @@ RUN chmod +x /gcc/install/usr/bin/gyllir
 ARG YMIR_VERSION_NUMBER
 WORKDIR /gcc/install/DEBIAN
 COPY control.in /gcc/install/DEBIAN/control
-RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/install/DEBIAN/control 
-RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/install/DEBIAN/control 
+RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/install/DEBIAN/control
+RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/install/DEBIAN/control
 RUN sed -i "s/@YMIR_VERSION_NUMBER@/${YMIR_VERSION_NUMBER}/g" /gcc/install/DEBIAN/control
 
 ARG ARCH
@@ -78,6 +72,3 @@ ARG ARCH
 COPY --from=build_gyllir /gyllir_${YMIR_VERSION}_${ARCH}.deb /
 
 CMD ["true"]
-
-
-
