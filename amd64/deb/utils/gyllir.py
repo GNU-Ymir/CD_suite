@@ -10,69 +10,76 @@ import shutil
 
 class GyllirBuilder:
 
-    def __init__(self, gcc_version: str, ymir_version: str, ubuntu_version: str):
+    def __init__(
+            self,
+            *,
+            gyc: str,
+            compile_with: str,
+            gyllir_version: str,
+            ubuntu_version: str,
+    ):
         self.api = docker.APIClient()
         self.client = docker.from_env()
-        self.gcc_version: str = gcc_version
-        self.ymir_version: str = ymir_version
+        self.gyc: str = gyc
+        self.gyllir_version: str = gyllir_version
         self.ubuntu_version: str = ubuntu_version
 
-        self.major = gcc_version
-        if gcc_version.find (".") != -1:
-            self.major = gcc_version[0:gcc_version.find (".")]
+        self.gcc_version = compile_with
+        self.major = compile_with
+        if compile_with.find (".") != -1:
+            self.major = compile_with[0:compile_with.find (".")]
 
     def run(self):
         self.buildGyllir()
         self.retreiveDebFile()
 
     def buildGyllir(self):
-        shutil.copy (f"results/gyc-{self.major}_{self.ymir_version}_amd64.deb", "jobs/gyllir_build/gyc.deb")
+        shutil.copy (f"results/gyc-{self.gyc}_amd64.deb", "jobs/gyllir_build/gyc.deb")
         generator = self.api.build(
             path="jobs/gyllir_build/.",          # directory containing your Dockerfile
-            tag=f"gyllir:from_{self.ymir_version}",
+            tag=f"gyllir:from_{self.gyllir_version}",
             buildargs={
                 "GCC_VERSION": self.gcc_version,
                 "GCC_MAJOR_VERSION": self.major,
                 "UBUNTU_VERSION": self.ubuntu_version,
-                "YMIR_VERSION": self.ymir_version,
+                "GYLLIR_VERSION": self.gyllir_version,
                 "ARCH": "amd64"
             }
         )
-        
+
         self.showLogs(generator)
         os.remove ("jobs/gyllir_build/gyc.deb")
 
-    def retreiveDebFile(self):        
+    def retreiveDebFile(self):
         container = self.client.containers.create(
-            image=f"gyllir:from_{self.ymir_version}",            
+            image=f"gyllir:from_{self.gyllir_version}",
             name="extract",
             command=""   # important for scratch/minimal images
         )
-        
+
         print("Created container:", container.id)
 
-        bits, stat = container.get_archive(f"/gyllir_{self.ymir_version}_amd64.deb")
+        bits, stat = container.get_archive(f"/gyllir_{self.gyllir_version}_amd64.deb")
 
-        with open(f"results/gyllir_{self.ymir_version}_amd64.tar", "wb") as f:
+        with open(f"results/gyllir_{self.gyllir_version}_amd64.tar", "wb") as f:
             for chunk in bits:
                 f.write(chunk)
-                
+
         container.remove ()
-            
-        with tarfile.open(f"results/gyllir_{self.ymir_version}_amd64.tar") as tar:
+
+        with tarfile.open(f"results/gyllir_{self.gyllir_version}_amd64.tar") as tar:
             tar.extractall("results/")
-        os.remove (f"results/gyllir_{self.ymir_version}_amd64.tar")        
+        os.remove (f"results/gyllir_{self.gyllir_version}_amd64.tar")
 
     def showLogs(self, generator):
         while True:
             try:
-                output = generator.__next__()                                    
+                output = generator.__next__()
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
-            except StopIteration as r:                
+            except StopIteration as r:
                 click.echo("Docker image build complete.")
                 break
             except ValueError:
                 click.echo("Error parsing output from docker image build: %s" % output)
-
