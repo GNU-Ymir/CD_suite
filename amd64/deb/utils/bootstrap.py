@@ -7,31 +7,30 @@ import tarfile
 import os
 import shutil
 
+from utils.versions import GycVersions
+
 class VxxBuilder:
-    def __init__(self, gcc_version: str, compiler_version: str, prev_gcc_version: str, prev_version: str, ymir_version: str, target_ubuntu_version: str, compiler_ubuntu_version: str):
+    def __init__(
+            self,
+            *,
+            prev_gyc: str,
+            prev_gyllir: str,
+            versions: GycVersions,
+            ubuntu_version: str,
+    ):
         self.api = docker.APIClient()
         self.client = docker.from_env()
-        self.gcc_version: str = gcc_version
-        self.compiler_version: str = compiler_version
-        self.prev_gcc_version: str = prev_gcc_version
-        self.ymir_version: str = ymir_version
-        self.prev_version: str = prev_version
-        self.target_ubuntu_version: str = target_ubuntu_version
-        self.compiler_ubuntu_version: str = compiler_ubuntu_version
+        self.prev_gyc: str = prev_gyc
+        self.prev_gyllir: str = prev_gyllir
+        self.versions: GycVersions = versions
+        self.ubuntu_version: str = ubuntu_version
 
-        self.major = gcc_version
-        if gcc_version.find (".") != -1:
-            self.major = gcc_version[0:gcc_version.find (".")]
+        self.ymir_version = versions.ymir
+        self.gcc_version = versions.target
+        self.major = versions.target_major
+        self.compiler_major = versions.compiler_major
 
-        self.compiler_major = compiler_version
-        if compiler_version.find (".") != -1:
-            self.compiler_major = compiler_version[0:compiler_version.find (".")]
-
-        self.prev_major = prev_gcc_version
-        if prev_gcc_version.find (".") != -1:
-            self.prev_major = prev_gcc_version[0:prev_gcc_version.find (".")]
-
-        self.clone_image = f"gyc:gcc_clone_{compiler_ubuntu_version}"
+        self.clone_image = f"gyc:gcc_clone_{ubuntu_version}"
 
     def run(self):
         self.createCloneImage ()
@@ -44,26 +43,28 @@ class VxxBuilder:
             path="jobs/clone_gcc/.",          # directory containing your Dockerfile
             tag=self.clone_image,
             buildargs={
-                "UBUNTU_VERSION" : self.compiler_ubuntu_version
+                "UBUNTU_VERSION" : self.ubuntu_version
             }
         )
 
         self.showLogs(generator)
 
     def buildGyc(self):
-        shutil.copy (f"results/gyc-{self.prev_major}_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyc.deb")
-        shutil.copy (f"results/gyllir_{self.prev_version}_amd64.deb", "jobs/bootstrap_build/gyllir.deb")
+        shutil.copy (f"results/gyc-{self.prev_gyc}_amd64.deb", "jobs/bootstrap_build/gyc.deb")
+        shutil.copy (f"results/gyllir_{self.prev_gyllir}_amd64.deb", "jobs/bootstrap_build/gyllir.deb")
 
         generator = self.api.build(
             path="jobs/bootstrap_build/",
-            tag=f"gyc:final_{self.ymir_version}_deb",
+            tag=f"gyc:final_{self.versions.bootstrap}_deb",
             buildargs={
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
                 "COMPILER_MAJOR_VERSION" : self.compiler_major,
                 "CLONE_IMAGE" : self.clone_image,
-                "UBUNTU_VERSION" : self.target_ubuntu_version,
-                "YMIR_VERSION": self.ymir_version,
+                "UBUNTU_VERSION" : self.ubuntu_version,
+                "GYC_VERSION": self.ymir_version,
+                "YMIR_VERSION": self.versions.bootstrap,
+                "MIDGARD_VERSION": self.versions.midgard,
                 "ARCH": "amd64"
             }
         )
@@ -71,36 +72,36 @@ class VxxBuilder:
         self.showLogs(generator)
         os.remove ("jobs/bootstrap_build/gyc.deb")
         os.remove ("jobs/bootstrap_build/gyllir.deb")
-                
-    def retreiveDebFile(self):        
+
+    def retreiveDebFile(self):
         container = self.client.containers.create(
-            image=f"gyc:final_{self.ymir_version}_deb",
-            name="extract",
+            image=f"gyc:final_{self.versions.bootstrap}_deb",
+            name=f"extract-{self.versions.bootstrap}",
             command=""   # important for scratch/minimal images
         )
-        
+
         print("Created container:", container.id)
 
-        bits, stat = container.get_archive(f"/gyc-{self.major}_{self.ymir_version}_amd64.deb")
+        bits, stat = container.get_archive(f"/gyc-{self.major}_{self.versions.bootstrap}_amd64.deb")
 
-        with open(f"results/gyc-{self.major}_{self.ymir_version}_amd64.tar", "wb") as f:
+        with open(f"results/gyc-{self.major}_{self.versions.bootstrap}_amd64.tar", "wb") as f:
             for chunk in bits:
                 f.write(chunk)
-                
+
         container.remove ()
-            
-        with tarfile.open(f"results/gyc-{self.major}_{self.ymir_version}_amd64.tar") as tar:
+
+        with tarfile.open(f"results/gyc-{self.major}_{self.versions.bootstrap}_amd64.tar") as tar:
             tar.extractall("results/")
-        os.remove (f"results/gyc-{self.major}_{self.ymir_version}_amd64.tar")
+        os.remove (f"results/gyc-{self.major}_{self.versions.bootstrap}_amd64.tar")
 
     def showLogs(self, generator):
         while True:
             try:
-                output = generator.__next__()                                    
+                output = generator.__next__()
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
-            except StopIteration as r:                
+            except StopIteration as r:
                 click.echo("Docker image build complete.")
                 break
             except ValueError:

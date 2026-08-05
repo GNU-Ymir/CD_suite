@@ -2,6 +2,8 @@ ARG GCC_VERSION="15"
 ARG GCC_MAJOR_VERSION="15"
 ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="0.1.0"
+ARG GYC_VERSION="0.1.0"
+ARG MIDGARD_VERSION="0.1.0"
 ARG ARCH="amd64"
 ARG CLONE_IMAGE="gyc:gcc_clone_26.04"
 ARG UBUNTU_VERSION="26.04"
@@ -10,6 +12,7 @@ FROM ${CLONE_IMAGE} AS fetch_gcc_version
 
 ARG GCC_VERSION
 ARG YMIR_VERSION
+ARG GYC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG COMPILER_MAJOR_VERSION
 
@@ -35,8 +38,7 @@ RUN git clone https://github.com/GNU-Ymir/gymir.git ymir
 WORKDIR /gcc/gcc-src/gcc/ymir
 RUN git fetch --all
 
-RUN git checkout "${YMIR_VERSION}";
-
+RUN git checkout "${GYC_VERSION}";
 RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
 
 RUN touch lang.opt.urls
@@ -87,7 +89,7 @@ RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
 
 WORKDIR /gcc/gcc-bin/DEBIAN
 COPY control.in /gcc/gcc-bin/DEBIAN/control
-RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
+RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control 
 RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
 
 WORKDIR /gcc
@@ -100,7 +102,8 @@ FROM ubuntu:${UBUNTU_VERSION} AS build_midgard
 ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG YMIR_VERSION
-ARG YMIR_SHORT_VERSION=${YMIR_VERSION%.*}
+ARG MIDGARD_VERSION
+ARG MIDGARD_SHORT_VERSION=${MIDGARD_VERSION%.*}
 
 WORKDIR /gcc
 
@@ -118,18 +121,12 @@ COPY --from=build_first_deb gcc/gcc-install/usr/libexec/gcc/x86_64-linux-gnu/${G
 COPY --from=build_first_deb /gcc/gcc-bin.deb .
 RUN dpkg -i gcc-bin.deb
 
-ARG CACHE_BREAK=0
-RUN git clone https://github.com/GNU-Ymir/yruntime.git
+ARG CACHE_BREAK=3
+RUN git clone https://github.com/GNU-Ymir/yruntime.git 
 
 WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
-RUN set -e; \
-    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
-    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
-        git checkout "$BRANCH"; \
-    else \
-        git checkout "${YMIR_VERSION}"; \
-    fi
+RUN git checkout "${MIDGARD_VERSION}";
 
 RUN mkdir .build
 
@@ -139,27 +136,26 @@ RUN touch __lib_debug_.o
 RUN touch __lib_release_.o
 
 RUN cmake ..
-RUN make
+RUN make 
 RUN make install DESTDIR=/gcc/gcc-bin
 
 WORKDIR /gcc/yruntime/midgard
 
-RUN echo ${YMIR_SHORT_VERSION}
-RUN mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${YMIR_SHORT_VERSION}
-RUN cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${YMIR_SHORT_VERSION}
+RUN echo ${MIDGARD_SHORT_VERSION}
+RUN mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
+RUN cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
 
-ARG YMIR_SHORT_VERSION=${YMIR_VERSION%.*}
 WORKDIR /gcc/gcc-bin/usr/lib
-RUN ln -s libgymidgard-debug_${YMIR_SHORT_VERSION}.a libgymidgard-debug.a
-RUN ln -s libgymidgard-tests_${YMIR_SHORT_VERSION}.a libgymidgard-tests.a
-RUN ln -s libgymidgard-release_${YMIR_SHORT_VERSION}.a libgymidgard-release.a
+RUN ln -s libgymidgard-debug_${MIDGARD_SHORT_VERSION}.a libgymidgard-debug.a
+RUN ln -s libgymidgard-tests_${MIDGARD_SHORT_VERSION}.a libgymidgard-tests.a
+RUN ln -s libgymidgard-release_${MIDGARD_SHORT_VERSION}.a libgymidgard-release.a
 
 WORKDIR /gcc/gcc-bin/DEBIAN
 
 COPY control.in /gcc/gcc-bin/DEBIAN/control
-RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
+RUN sed -i "s/@GCC_MAJOR_VERSION@/${GCC_MAJOR_VERSION}/g" /gcc/gcc-bin/DEBIAN/control 
 RUN sed -i "s/@GCC_VERSION@/${GCC_VERSION}/g" /gcc/gcc-bin/DEBIAN/control
-
+ 
 WORKDIR /gcc/gcc-bin/usr/bin
 RUN ln -s x86_64-linux-gnu-gyc-${GCC_MAJOR_VERSION} gyc-${GCC_MAJOR_VERSION}
 RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
@@ -167,7 +163,7 @@ RUN ln -s gyc-${GCC_MAJOR_VERSION} gyc
 WORKDIR /gcc
 RUN dpkg --build gcc-bin
 
-ARG ARCH
+ARG ARCH 
 RUN mv gcc-bin.deb /gyc-${GCC_MAJOR_VERSION}_${YMIR_VERSION}_${ARCH}.deb
 
 FROM scratch AS export
