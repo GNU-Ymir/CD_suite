@@ -87,7 +87,7 @@ class CxxBuilder:
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
-            except StopIteration as r:                
+            except StopIteration:                
                 click.echo("Docker image build complete.")
                 break
             except ValueError:

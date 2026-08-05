@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import yaml
-import requests
 import os
 
 import utils.cxx
@@ -19,7 +18,7 @@ class Builder:
 
     def run (self):
         try:
-            os.mkdir(f"results")
+            os.mkdir("results")
         except Exception:
             pass
 

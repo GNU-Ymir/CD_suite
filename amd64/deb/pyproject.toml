@@ -5,3 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = ["docker", "pyyaml"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.1",
+]
+
+[tool.ruff.lint]
+# Pyflakes only: real bugs (unused imports/vars, undefined names), not style.
+# This codebase's spacing conventions (e.g. space before '(') are intentional.
+select = ["F"]
