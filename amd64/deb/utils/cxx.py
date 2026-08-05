@@ -7,38 +7,51 @@ import tarfile
 import os
 
 class CxxBuilder:
-    def __init__(self, gcc_version: str):    
+    def __init__(self, gcc_version: str, compiler_version: str, ubuntu_version: str):
         self.api = docker.APIClient()
         self.client = docker.from_env()
         self.gcc_version: str = gcc_version
-                
+        self.compiler_version: str = compiler_version
+        self.ubuntu_version: str = ubuntu_version
+
         self.major = gcc_version
         if gcc_version.find (".") != -1:
-            self.major = gcc_version[0:gcc_version.find (".")]        
-                
-        
+            self.major = gcc_version[0:gcc_version.find (".")]
+
+        self.compiler_major = compiler_version
+        if compiler_version.find (".") != -1:
+            self.compiler_major = compiler_version[0:compiler_version.find (".")]
+
+        self.clone_image = f"gyc:gcc_clone_{ubuntu_version}"
+
     def run(self):
         self.createCloneImage ()
         self.buildGyc ()
         self.retreiveDebFile ()
-        
+
 
     def createCloneImage(self):
         generator = self.api.build(
             path="jobs/clone_gcc/.",          # directory containing your Dockerfile
-            tag="gyc:gcc_clone"            
+            tag=self.clone_image,
+            buildargs={
+                "UBUNTU_VERSION" : self.ubuntu_version
+            }
         )
 
-        self.showLogs(generator)        
+        self.showLogs(generator)
 
     def buildGyc(self):
-        
+
         generator = self.api.build(
-            path="jobs/cxx_build/",          
+            path="jobs/cxx_build/",
             tag="gyc:final_cxx_deb",
             buildargs={
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
+                "COMPILER_MAJOR_VERSION" : self.compiler_major,
+                "CLONE_IMAGE" : self.clone_image,
+                "UBUNTU_VERSION" : self.ubuntu_version,
                 "YMIR_VERSION": "cxx",
                 "ARCH": "amd64"
             }
@@ -74,7 +87,7 @@ class CxxBuilder:
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
-            except StopIteration as r:                
+            except StopIteration:                
                 click.echo("Docker image build complete.")
                 break
             except ValueError:

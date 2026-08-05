@@ -1,0 +1,33 @@
+name: amd64/deb CI
+
+on:
+  push:
+    paths:
+      - "amd64/deb/**"
+      - ".github/workflows/deb-ci.yml"
+  pull_request:
+    paths:
+      - "amd64/deb/**"
+      - ".github/workflows/deb-ci.yml"
+
+defaults:
+  run:
+    working-directory: amd64/deb
+
+jobs:
+  checks:
+    name: lint + version matrix sanity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv run ruff check .
+      - run: uv run python -m scripts.check_version_matrix
+
+  remote-tags:
+    name: verify gymir/bootstrap/yruntime tags exist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv run python -m scripts.check_remote_tags

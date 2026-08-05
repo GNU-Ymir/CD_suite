@@ -1,48 +1,50 @@
 #!/usr/bin/env python3
 
 import yaml
-import requests
 import os
 
 import utils.cxx
 import utils.gyllir
 import utils.bootstrap
+from utils.versions import STAGES, CxxStage, BootstrapStage
 
 class Builder:
-    
+
     def __init__ (self, config):
         with open(config, 'r') as file :
             self._cfg = yaml.safe_load (file)
-            self._gcc_version = self._cfg ["gcc_version"]
             self._versions = self._cfg ["ymir_versions"]
 
 
     def run (self):
         try:
-            os.mkdir(f"results")
-            print(f"Directory '{directory_name}' created successfully.")
+            os.mkdir("results")
         except Exception:
             pass
 
         for v in self._versions:
-            if v == "cxx_version":
-                utils.cxx.CxxBuilder (self._gcc_version).run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "cxx").run ()
-            elif v == "bootstrap_v0.1":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "cxx", "0.1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "0.1.0").run ()
-            elif v == "bootstrap_v1.0":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "0.1.0", "1.0.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "1.0.0").run ()
-            elif v == "bootstrap_v1.1":
-                utils.bootstrap.VxxBuilder (self._gcc_version, "1.0.0", "1.1.0").run ()
-                utils.gyllir.GyllirBuilder (self._gcc_version, "1.1.0").run ()
-                
-            else:
+            stage = STAGES.get (v)
+            if stage is None:
                 print (f"Version {v} unknown")
                 print ("Available versions are :")
-                print ("- 'cxx_version'")
-                print ("- 'bootstrap_v0.1' (depends on version_cxx)")
-                print ("- 'bootstrap_v1.0' (depends on v0.1)")
-                print ("- 'bootstrap_v1.1' (depends on v1.0)")
-                print ("- 'bootstrap_v1.1_alone' (depends on v1.1 or v1.1_alone)")
+                for name in STAGES:
+                    print (f"- '{name}'")
+                continue
+
+            if isinstance (stage, CxxStage):
+                utils.cxx.CxxBuilder (stage.target, stage.compiler, stage.ubuntu_version).run ()
+            elif isinstance (stage, BootstrapStage):
+                utils.bootstrap.VxxBuilder (
+                    prev_gyc=stage.prev_gyc,
+                    prev_gyllir=stage.prev_gyllir,
+                    versions=stage.versions,
+                    ubuntu_version=stage.ubuntu_version,
+                ).run ()
+
+            if stage.gyllir is not None:
+                utils.gyllir.GyllirBuilder (
+                    gyc=stage.gyllir.gyc,
+                    compile_with=stage.gyllir.compile_with,
+                    gyllir_version=stage.gyllir.gyllir_version,
+                    ubuntu_version=stage.gyllir.ubuntu_version,
+                ).run ()

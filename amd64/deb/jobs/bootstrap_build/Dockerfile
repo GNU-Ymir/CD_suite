@@ -1,18 +1,28 @@
 ARG GCC_VERSION="15"
 ARG GCC_MAJOR_VERSION="15"
+ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="0.1.0"
+ARG GYC_VERSION="0.1.0"
+ARG MIDGARD_VERSION="0.1.0"
 ARG ARCH="amd64"
+ARG CLONE_IMAGE="gyc:gcc_clone_26.04"
+ARG UBUNTU_VERSION="26.04"
 
-FROM gyc:gcc_clone AS fetch_gcc_version
+FROM ${CLONE_IMAGE} AS fetch_gcc_version
 
 ARG GCC_VERSION
 ARG YMIR_VERSION
+ARG GYC_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
 
 COPY gyc.deb .
 COPY gyllir.deb .
 RUN dpkg -i gyc.deb
 RUN dpkg -i gyllir.deb
+
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends gcc-${COMPILER_MAJOR_VERSION} g++-${COMPILER_MAJOR_VERSION}
 
 RUN gyc --version
 RUN gyllir -h || true
@@ -28,14 +38,9 @@ RUN git clone https://github.com/GNU-Ymir/gymir.git ymir
 WORKDIR /gcc/gcc-src/gcc/ymir
 RUN git fetch --all
 
-RUN set -e; \
-    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
-    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
-        git checkout "$BRANCH"; \
-    else \
-        git checkout "${YMIR_VERSION}"; \
-    fi
-    
+RUN git checkout "${GYC_VERSION}";
+RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
+
 RUN touch lang.opt.urls
 RUN git clone https://github.com/GNU-Ymir/bootstrap.git
 
@@ -50,10 +55,11 @@ FROM fetch_gcc_version AS configure
 ARG GCC_VERSION
 ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
+ARG COMPILER_MAJOR_VERSION
 
 ARG BREAK=0
 WORKDIR /gcc/gcc-build
-RUN ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
+RUN CC=gcc-${COMPILER_MAJOR_VERSION} CXX=g++-${COMPILER_MAJOR_VERSION} ../gcc-src/configure --enable-languages=c,d,ymir --with-gcc-major-version-only --program-suffix=-${GCC_MAJOR_VERSION} --prefix=/usr --program-prefix=x86_64-linux-gnu- --libexecdir=/usr/libexec --libdir=/usr/lib --with-sysroot=/ --with-arch-directory=amd64 --enable-multiarch --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --disable-bootstrap
 
 FROM configure AS make
 WORKDIR /gcc/gcc-build
@@ -91,17 +97,18 @@ RUN find gcc-bin
 RUN cat gcc-bin/DEBIAN/control
 RUN dpkg --build gcc-bin
 
-FROM ubuntu:26.04 AS build_midgard
+FROM ubuntu:${UBUNTU_VERSION} AS build_midgard
 
 ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG YMIR_VERSION
-ARG YMIR_SHORT_VERSION=${YMIR_VERSION%.*}
+ARG MIDGARD_VERSION
+ARG MIDGARD_SHORT_VERSION=${MIDGARD_VERSION%.*}
 
 WORKDIR /gcc
 
 RUN apt-get update
-RUN apt-get install -y gcc g++ flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
+RUN apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
 
 RUN mkdir gcc-bin
 RUN mkdir -p gcc-bin/DEBIAN
@@ -114,18 +121,12 @@ COPY --from=build_first_deb gcc/gcc-install/usr/libexec/gcc/x86_64-linux-gnu/${G
 COPY --from=build_first_deb /gcc/gcc-bin.deb .
 RUN dpkg -i gcc-bin.deb
 
-ARG CACHE_BREAK=0
+ARG CACHE_BREAK=3
 RUN git clone https://github.com/GNU-Ymir/yruntime.git 
 
 WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
-RUN set -e; \
-    BRANCH="${YMIR_VERSION}-gcc${GCC_MAJOR_VERSION}"; \
-    if git ls-remote --exit-code origin "$BRANCH" >/dev/null 2>&1; then \
-        git checkout "$BRANCH"; \
-    else \
-        git checkout "${YMIR_VERSION}"; \
-    fi
+RUN git checkout "${MIDGARD_VERSION}";
 
 RUN mkdir .build
 
@@ -140,15 +141,14 @@ RUN make install DESTDIR=/gcc/gcc-bin
 
 WORKDIR /gcc/yruntime/midgard
 
-RUN echo ${YMIR_SHORT_VERSION}
-RUN mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${YMIR_SHORT_VERSION}
-RUN cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${YMIR_SHORT_VERSION}
+RUN echo ${MIDGARD_SHORT_VERSION}
+RUN mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
+RUN cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
 
-ARG YMIR_SHORT_VERSION=${YMIR_VERSION%.*}
 WORKDIR /gcc/gcc-bin/usr/lib
-RUN ln -s libgymidgard-debug_${YMIR_SHORT_VERSION}.a libgymidgard-debug.a
-RUN ln -s libgymidgard-tests_${YMIR_SHORT_VERSION}.a libgymidgard-tests.a
-RUN ln -s libgymidgard-release_${YMIR_SHORT_VERSION}.a libgymidgard-release.a
+RUN ln -s libgymidgard-debug_${MIDGARD_SHORT_VERSION}.a libgymidgard-debug.a
+RUN ln -s libgymidgard-tests_${MIDGARD_SHORT_VERSION}.a libgymidgard-tests.a
+RUN ln -s libgymidgard-release_${MIDGARD_SHORT_VERSION}.a libgymidgard-release.a
 
 WORKDIR /gcc/gcc-bin/DEBIAN
 
