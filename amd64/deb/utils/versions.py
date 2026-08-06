@@ -105,7 +105,7 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         # target gcc-15, compiled with gcc-15, both on ubuntu 26.04
         prev_gyc="15_1.1.0",
         prev_gyllir="1.1.0",
-        versions=GycVersions (compiler="15", target="15", ymir="1.1.0", bootstrap="1.1.1", midgard="1.1.0"),
+        versions=GycVersions (compiler="15", target="15", ymir="1.1.0", bootstrap="1.1.1", midgard="1.1.1"),
         ubuntu_version=UBUNTU_FOR_GCC15,
         gyllir=GyllirSpec (gyc="15_1.1.1", compile_with="15", gyllir_version="1.1.0", ubuntu_version=UBUNTU_FOR_GCC15),
     ),
