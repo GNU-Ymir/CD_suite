@@ -32,11 +32,18 @@ class GycVersions:
 
 @dataclass(frozen=True)
 class GyllirSpec:
-    """Args for the GyllirBuilder that follows a stage's gyc build."""
+    """Args for the GyllirBuilder that follows a stage's gyc build.
+
+    prev_gyllir: set from gyllir 1.2.0 onward, where Gyllir builds itself (utils.gyllir.
+    GyllirSelfBuilder, jobs/gyllir_self_build) instead of using CMake (utils.gyllir.GyllirBuilder,
+    jobs/gyllir_build) - the identifier (e.g. "1.1.0") of the already-built gyllir .deb in
+    results/ used to compile this one. Leave None for the CMake-built versions before 1.2.0.
+    """
     gyc: str
     compile_with: str
     gyllir_version: str
     ubuntu_version: str
+    prev_gyllir: str | None = None
 
 
 @dataclass(frozen=True)
@@ -107,7 +114,9 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         prev_gyllir="1.1.0",
         versions=GycVersions (compiler="15", target="15", ymir="1.1.0", bootstrap="1.1.1", midgard="1.1.1"),
         ubuntu_version=UBUNTU_FOR_GCC15,
-        gyllir=GyllirSpec (gyc="15_1.1.1", compile_with="15", gyllir_version="1.1.0", ubuntu_version=UBUNTU_FOR_GCC15),
+        # gyllir 1.2.0 is self-built (see GyllirSpec.prev_gyllir) against the previous stage'self
+        # released 1.1.0 gyllir.
+        gyllir=GyllirSpec (gyc="15_1.1.1", compile_with="15", gyllir_version="1.2.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.1.0"),
     ),
     "bootstrap_v1.2.0": BootstrapStage (
         # target gcc-15, compiled with gcc-15, both on ubuntu 26.04
@@ -115,6 +124,6 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         prev_gyllir="1.1.0",
         versions=GycVersions (compiler="15", target="15", ymir="1.2.0", bootstrap="1.2.0", midgard="1.2.1"),
         ubuntu_version=UBUNTU_FOR_GCC15,
-        gyllir=GyllirSpec (gyc="15_1.2.0", compile_with="15", gyllir_version="1.2.0", ubuntu_version=UBUNTU_FOR_GCC15),
+        gyllir=None,
     ),
 }

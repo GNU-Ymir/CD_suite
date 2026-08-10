@@ -42,9 +42,19 @@ class Builder:
                 ).run ()
 
             if stage.gyllir is not None:
-                utils.gyllir.GyllirBuilder (
-                    gyc=stage.gyllir.gyc,
-                    compile_with=stage.gyllir.compile_with,
-                    gyllir_version=stage.gyllir.gyllir_version,
-                    ubuntu_version=stage.gyllir.ubuntu_version,
-                ).run ()
+                if stage.gyllir.prev_gyllir is not None:
+                    # gyllir >= 1.2.0 builds itself instead of using CMake.
+                    utils.gyllir.GyllirSelfBuilder (
+                        gyc=stage.gyllir.gyc,
+                        prev_gyllir=stage.gyllir.prev_gyllir,
+                        compile_with=stage.gyllir.compile_with,
+                        gyllir_version=stage.gyllir.gyllir_version,
+                        ubuntu_version=stage.gyllir.ubuntu_version,
+                    ).run ()
+                else:
+                    utils.gyllir.GyllirBuilder (
+                        gyc=stage.gyllir.gyc,
+                        compile_with=stage.gyllir.compile_with,
+                        gyllir_version=stage.gyllir.gyllir_version,
+                        ubuntu_version=stage.gyllir.ubuntu_version,
+                    ).run ()
