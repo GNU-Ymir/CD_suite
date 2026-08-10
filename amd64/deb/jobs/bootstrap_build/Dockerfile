@@ -15,6 +15,7 @@ ARG YMIR_VERSION
 ARG GYC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG COMPILER_MAJOR_VERSION
+ARG MIDGARD_VERSION
 
 COPY gyc.deb .
 COPY gyllir.deb .
@@ -46,6 +47,19 @@ RUN git clone https://github.com/GNU-Ymir/bootstrap.git
 
 WORKDIR /gcc/gcc-src/gcc/ymir/bootstrap
 RUN git switch ${YMIR_VERSION} --detach
+
+# Keep the compiled ymirc's baked-in include-path constant (MIDGARD_VERSION in
+# src/ymirc/global/common.yr, set from this file by tools/set-version.sh, wired as a
+# gyllir pre-build command) in sync with the midgard release this pipeline actually pairs
+# with this gyc release (the MIDGARD_VERSION arg, checked out below in build_midgard) -
+# the tag's own committed YMIR_VERSION would otherwise be free to drift from what the
+# CD_suite version matrix (versions.py) intends for this stage. Older tags may not have a
+# YMIR_VERSION file (pre-dates tools/set-version.sh) - leave those untouched.
+RUN if [ -f YMIR_VERSION ]; then \
+		grep -q '^MIDGARD_VERSION=' YMIR_VERSION \
+			&& sed -i "s/^MIDGARD_VERSION=.*/MIDGARD_VERSION=${MIDGARD_VERSION}/" YMIR_VERSION \
+			|| echo "MIDGARD_VERSION=${MIDGARD_VERSION}" >> YMIR_VERSION; \
+	fi
 
 WORKDIR /gcc/gcc-src/
 RUN ./contrib/download_prerequisites
@@ -103,7 +117,6 @@ ARG GCC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG YMIR_VERSION
 ARG MIDGARD_VERSION
-ARG MIDGARD_SHORT_VERSION=${MIDGARD_VERSION%.*}
 
 WORKDIR /gcc
 
@@ -128,6 +141,13 @@ WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
 RUN git checkout "${MIDGARD_VERSION}";
 
+# midgard's own CMakeLists.txt names the built libs/install dir after the major.minor of
+# YMIR_BOOTSTRAP_VERSION in this checkout's YMIR_VERSION file - not after the MIDGARD_VERSION
+# release tag itself, and the two can drift (e.g. this stage's bootstrap=1.2.0 vs
+# midgard=1.2.1). Read the same file CMake reads instead of re-deriving it from the tag.
+RUN sed -nE 's/^YMIR_BOOTSTRAP_VERSION=([0-9]+\.[0-9]+).*/\1/p' YMIR_VERSION > /tmp/midgard_short_version
+RUN test -s /tmp/midgard_short_version || (echo "could not derive MIDGARD_SHORT_VERSION from $(pwd)/YMIR_VERSION" >&2 && exit 1)
+
 RUN mkdir .build
 
 WORKDIR /gcc/yruntime/.build
@@ -141,14 +161,15 @@ RUN make install DESTDIR=/gcc/gcc-bin
 
 WORKDIR /gcc/yruntime/midgard
 
-RUN echo ${MIDGARD_SHORT_VERSION}
-RUN mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
-RUN cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/${MIDGARD_SHORT_VERSION}
+RUN MIDGARD_SHORT_VERSION="$(cat /tmp/midgard_short_version)" && echo "$MIDGARD_SHORT_VERSION" \
+	&& mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION \
+	&& cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION
 
 WORKDIR /gcc/gcc-bin/usr/lib
-RUN ln -s libgymidgard-debug_${MIDGARD_SHORT_VERSION}.a libgymidgard-debug.a
-RUN ln -s libgymidgard-tests_${MIDGARD_SHORT_VERSION}.a libgymidgard-tests.a
-RUN ln -s libgymidgard-release_${MIDGARD_SHORT_VERSION}.a libgymidgard-release.a
+RUN MIDGARD_SHORT_VERSION="$(cat /tmp/midgard_short_version)" \
+	&& ln -s libgymidgard-debug_$MIDGARD_SHORT_VERSION.a libgymidgard-debug.a \
+	&& ln -s libgymidgard-tests_$MIDGARD_SHORT_VERSION.a libgymidgard-tests.a \
+	&& ln -s libgymidgard-release_$MIDGARD_SHORT_VERSION.a libgymidgard-release.a
 
 WORKDIR /gcc/gcc-bin/DEBIAN
 
