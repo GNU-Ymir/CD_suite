@@ -15,19 +15,20 @@ defaults:
     working-directory: amd64/deb
 
 jobs:
+  # One job, run as successive steps: checkout + uv setup are shared, and each check is
+  # cheap enough that the parallelism of separate jobs did not pay for the repeated setup.
   checks:
-    name: lint + version matrix sanity
+    name: lint + version matrix + remote tags
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
-      - run: uv run ruff check .
-      - run: uv run python -m scripts.check_version_matrix
-
-  remote-tags:
-    name: verify gymir/bootstrap/yruntime tags exist
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
-      - run: uv run python -m scripts.check_remote_tags
+      - name: lint
+        run: uv run ruff check .
+      - name: version matrix sanity
+        run: uv run python -m scripts.check_version_matrix
+      - name: verify gymir/bootstrap/yruntime/gyllir tags exist
+        # Network-dependent, so run it even when an earlier check failed: one CI run then
+        # reports every problem at once instead of one per push.
+        if: ${{ !cancelled() }}
+        run: uv run python -m scripts.check_remote_tags
