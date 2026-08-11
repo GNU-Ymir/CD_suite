@@ -3,7 +3,7 @@
 """Verify the git refs utils/versions.py's STAGES matrix names actually exist
 upstream, before a docker build gets far enough to fail on `git checkout`.
 
-Only covers the GNU-Ymir GitHub repos (gymir, bootstrap, yruntime) — the
+Only covers the GNU-Ymir GitHub repos (gymir, bootstrap, yruntime, Gyllir) — the
 upstream GCC release branch is assumed to exist and is not checked here.
 """
 
@@ -15,6 +15,7 @@ from utils.versions import STAGES, BootstrapStage, CxxStage
 GYMIR_REPO = "https://github.com/GNU-Ymir/gymir.git"
 BOOTSTRAP_REPO = "https://github.com/GNU-Ymir/bootstrap.git"
 YRUNTIME_REPO = "https://github.com/GNU-Ymir/yruntime.git"
+GYLLIR_REPO = "https://github.com/GNU-Ymir/Gyllir.git"
 
 
 def collect_refs() -> set[tuple[str, str]]:
@@ -28,6 +29,12 @@ def collect_refs() -> set[tuple[str, str]]:
             refs.add((GYMIR_REPO, stage.versions.ymir))
             refs.add((BOOTSTRAP_REPO, stage.versions.bootstrap))
             refs.add((YRUNTIME_REPO, stage.versions.midgard))
+
+        # gyllir_version is the tag both jobs/gyllir_build and jobs/gyllir_self_build check
+        # out of the Gyllir repo. prev_gyllir is not checked: it names an already-built .deb
+        # in results/, not a ref to fetch.
+        if stage.gyllir is not None:
+            refs.add((GYLLIR_REPO, stage.gyllir.gyllir_version))
     return refs
 
 
