@@ -123,7 +123,7 @@ WORKDIR /gcc
 
 # Kept in one RUN with the install - see the note in jobs/clone_gcc/Dockerfile.
 RUN apt-get update \
-	&& apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
+	&& apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev cpio
 
 RUN mkdir gcc-bin
 RUN mkdir -p gcc-bin/DEBIAN
@@ -136,6 +136,14 @@ COPY --from=build_first_deb gcc/gcc-install/usr/libexec/gcc/x86_64-linux-gnu/${G
 COPY --from=build_first_deb /gcc/gcc-bin.deb .
 RUN dpkg -i gcc-bin.deb
 
+# From 1.3.1 on, yruntime dropped its CMakeLists.txt and is built by gyllir from a gyllir.toml
+# manifest instead (see the branches below). gyllir.deb is the *previous* stage's gyllir, already
+# copied into this build context by VxxBuilder for fetch_gcc_version. Upstream's own yruntime
+# Dockerfile instead downloads the exact GYLLIR_VERSION named in the checked-out yruntime's
+# YMIR_VERSION, which is not necessarily a version this chain has built yet.
+COPY gyllir.deb .
+RUN dpkg -i gyllir.deb
+
 ARG CACHE_BREAK=3
 RUN git clone https://github.com/GNU-Ymir/yruntime.git 
 
@@ -143,29 +151,80 @@ WORKDIR /gcc/yruntime
 RUN git fetch --all --tags
 RUN git checkout "${MIDGARD_VERSION}";
 
-# midgard's own CMakeLists.txt names the built libs/install dir after the major.minor of
-# YMIR_BOOTSTRAP_VERSION in this checkout's YMIR_VERSION file - not after the MIDGARD_VERSION
-# release tag itself, and the two can drift (e.g. this stage's bootstrap=1.2.0 vs
-# midgard=1.2.1). Read the same file CMake reads instead of re-deriving it from the tag.
-RUN sed -nE 's/^YMIR_BOOTSTRAP_VERSION=([0-9]+\.[0-9]+).*/\1/p' YMIR_VERSION > /tmp/midgard_short_version
-RUN test -s /tmp/midgard_short_version || (echo "could not derive MIDGARD_SHORT_VERSION from $(pwd)/YMIR_VERSION" >&2 && exit 1)
+# The installed archives and include dir are suffixed with a major.minor "short" version, and gyc
+# only ever looks them up under the one baked into its own gycspec.o (LIBYMIDGARD_VERSION, which
+# Make-lang.in threads in from the bootstrap checkout's MIDGARD_VERSION - pinned above). Which
+# file on the midgard side carries that value changed with the build system, so read whichever
+# one the build system actually in use reads rather than re-deriving it from the tag:
+#  - CMake era (<= 1.3.0): CMakeLists.txt names them after YMIR_BOOTSTRAP_VERSION in this
+#    checkout's YMIR_VERSION, i.e. after the gyc midgard is built with, not its own release.
+#  - gyllir era (>= 1.3.1): yruntime's own `install` script names them after its VERSION file,
+#    i.e. after the midgard release itself.
+# The two genuinely disagree once a bootstrap trails a midgard release (midgard 1.5.0 carries
+# YMIR_BOOTSTRAP_VERSION=1.4.0: short version 1.5 under the new rule, 1.4 under the old one).
+RUN if [ -f gyllir.toml ]; then \
+		tr -d '[:space:]' < VERSION | cut -d. -f1,2 > /tmp/midgard_short_version; \
+	else \
+		sed -nE 's/^YMIR_BOOTSTRAP_VERSION=([0-9]+\.[0-9]+).*/\1/p' YMIR_VERSION > /tmp/midgard_short_version; \
+	fi
+RUN test -s /tmp/midgard_short_version || (echo "could not derive MIDGARD_SHORT_VERSION from $(pwd)" >&2 && exit 1)
 
-RUN mkdir .build
+# Left alone a mismatch here would not fail anything, it would just produce a deb whose archives
+# gyc can never find - so fail here rather than at the next stage's link step, which is where the
+# missing -lgymidgard-debug_<version> would otherwise first show up.
+RUN EXPECTED="$(echo "${MIDGARD_VERSION}" | cut -d. -f1,2)" \
+	&& SHORT="$(cat /tmp/midgard_short_version)" \
+	&& { [ "$SHORT" = "$EXPECTED" ] \
+		|| (echo "midgard would install libgymidgard-*_$SHORT, but this gyc links _$EXPECTED" >&2 && exit 1) ; }
 
-WORKDIR /gcc/yruntime/.build
-RUN touch __lib_test_.o
-RUN touch __lib_debug_.o
-RUN touch __lib_release_.o
+# CMake installs through DESTDIR and leaves the .yr sources to be copied by hand; the gyllir era
+# ships an `install` script that does both, but writes to the real /usr, so run it and mirror
+# what it produced into the package root. `gyllir build` drops the unversioned archives at the
+# repo root, which `install` then renames and suffixes.
+#
+# Only the three library targets `install` picks up are built, one `gyllir build <target>` each,
+# rather than the whole manifest: gyllir.toml also declares a `midgard_tests` executable, and
+# linking that one needs an already-installed midgard (gyc appends -lgymidgard-debug_<version>
+# under -funittest). Upstream's own Dockerfile gets away with `gyllir build` because its gyc comes
+# from a released .deb that still bundles the previous midgard; here gyc is the one just built in
+# build_first_deb, which carries no midgard at all - and the archives that would satisfy the link
+# are the ones this very step is producing, not installed until `install` runs below. The deb needs
+# only the libraries, so the test executable is simply not built. Target names mirror the
+# `for name in debug release tests` loop in `install`.
+RUN if [ -f gyllir.toml ]; then \
+		for name in release debug tests; do \
+			gyllir build gymidgard_$name || exit 1; \
+		done; \
+	else \
+		mkdir .build \
+			&& cd .build \
+			&& touch __lib_test_.o __lib_debug_.o __lib_release_.o \
+			&& cmake .. \
+			&& make \
+			&& make install DESTDIR=/gcc/gcc-bin; \
+	fi
 
-RUN cmake ..
-RUN make 
-RUN make install DESTDIR=/gcc/gcc-bin
+# `install` also sources this checkout's YMIR_VERSION for the GCC_VERSION whose libexec include
+# dir it writes into. Pin it to the major this stage is actually packaging, the same way the
+# bootstrap checkout's MIDGARD_VERSION is pinned in fetch_gcc_version.
+RUN if [ -f gyllir.toml ]; then \
+		sed -i "s/^GCC_VERSION=.*/GCC_VERSION=${GCC_VERSION}/" YMIR_VERSION \
+		&& ./install \
+		&& SHORT="$(cat /tmp/midgard_short_version)" \
+		&& LIBEXEC="/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir" \
+		&& mkdir -p /gcc/gcc-bin/usr/lib /gcc/gcc-bin/usr/include/ymir /gcc/gcc-bin$LIBEXEC \
+		&& cp /usr/lib/libgymidgard-*_$SHORT.a /gcc/gcc-bin/usr/lib/ \
+		&& cp -r /usr/include/ymir/$SHORT /gcc/gcc-bin/usr/include/ymir/ \
+		&& cp -r $LIBEXEC/$SHORT /gcc/gcc-bin$LIBEXEC/; \
+	fi
 
 WORKDIR /gcc/yruntime/midgard
 
-RUN MIDGARD_SHORT_VERSION="$(cat /tmp/midgard_short_version)" && echo "$MIDGARD_SHORT_VERSION" \
-	&& mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION \
-	&& cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION
+RUN if [ ! -f ../gyllir.toml ]; then \
+		MIDGARD_SHORT_VERSION="$(cat /tmp/midgard_short_version)" && echo "$MIDGARD_SHORT_VERSION" \
+		&& mkdir -p /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION \
+		&& cp -r * /gcc/gcc-bin/usr/libexec/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}/include/ymir/$MIDGARD_SHORT_VERSION; \
+	fi
 
 WORKDIR /gcc/gcc-bin/usr/lib
 RUN MIDGARD_SHORT_VERSION="$(cat /tmp/midgard_short_version)" \
