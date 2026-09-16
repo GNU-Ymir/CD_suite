@@ -13,8 +13,9 @@ ARG YMIR_VERSION
 ARG GCC_MAJOR_VERSION
 ARG COMPILER_MAJOR_VERSION
 
-RUN apt-get update
-RUN apt-get install -y --no-install-recommends gcc-${COMPILER_MAJOR_VERSION} g++-${COMPILER_MAJOR_VERSION}
+# Kept in one RUN with the install - see the note in jobs/clone_gcc/Dockerfile.
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends gcc-${COMPILER_MAJOR_VERSION} g++-${COMPILER_MAJOR_VERSION}
 
 WORKDIR /gcc/gcc-src
 
@@ -88,8 +89,9 @@ ARG YMIR_VERSION
 
 WORKDIR /gcc
 
-RUN apt-get update
-RUN apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
+# Kept in one RUN with the install - see the note in jobs/clone_gcc/Dockerfile.
+RUN apt-get update \
+	&& apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} flex autoconf automake libtool cmake patchelf libdwarf-dev git libgc-dev
 
 RUN mkdir gcc-bin
 RUN mkdir -p gcc-bin/DEBIAN

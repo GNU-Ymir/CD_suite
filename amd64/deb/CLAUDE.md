@@ -137,6 +137,12 @@ the previous stage's output, and (if built) a `GyllirSpec` with its own `compile
   (`ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)`) under the `CFLAGS-ymir` line
   if it's missing. This works around a missing build dependency in some upstream `gymir` tags; the
   `grep -qF ... || sed -i ...` guard keeps it idempotent if a future tag already has the line.
+- Every `apt-get update` lives in the same `RUN` as the installs it feeds. Split across two `RUN`s
+  it becomes a cached layer holding an index that still names exact `.deb` versions long after
+  Ubuntu has dropped them from the pool, and the install then dies on a wall of 404s for files that
+  no longer exist — a failure that looks like a network problem but is really a stale cache. The
+  cost is that touching one of these lines re-runs everything after it, including `clone_gcc`'s
+  bare `gcc.git` clone.
 - Building requires a working Docker daemon and network access to `gcc.gnu.org`, `github.com`, and
   the Ubuntu apt mirrors; there's no offline/vendored mode.
 - `bootstrap_v1.1`'s single `ubuntu_version` is set to the *compiler's* ubuntu (24.04, since

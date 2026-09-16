@@ -15,8 +15,9 @@ ARG GCC_MAJOR_VERSION
 RUN mkdir /gcc
 WORKDIR /gcc
 
-RUN apt-get update
-RUN apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} patchelf libdwarf-dev libgc-dev git
+# Kept in one RUN with the install - see the note in jobs/clone_gcc/Dockerfile.
+RUN apt-get update \
+	&& apt-get install -y gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} patchelf libdwarf-dev libgc-dev git
 
 COPY gyc.deb .
 COPY gyllir.deb .
