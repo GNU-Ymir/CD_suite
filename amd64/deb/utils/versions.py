@@ -140,14 +140,14 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         prev_gyllir="1.5.1",
         versions=GycVersions (compiler="15", target="15", ymir="1.4.0", bootstrap="1.4.0", midgard="1.3.6"),
         ubuntu_version=UBUNTU_FOR_GCC15,
-        gyllir=GyllirSpec(gyc="15_1.4.0", compile_with="15", gyllir_version="1.6.3", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.5.1"),
+        gyllir=GyllirSpec(gyc="15_1.4.0", compile_with="15", gyllir_version="1.7.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.5.1"),
     ),
-    "bootstrap_v1.5.2": BootstrapStage (
+    "bootstrap_v1.5.3": BootstrapStage (
         # target gcc-15, compiled with gcc-15, both on ubuntu 26.04
         prev_gyc="15_1.4.0",
-        prev_gyllir="1.6.3",
-        versions=GycVersions (compiler="15", target="15", ymir="1.5.2", bootstrap="1.5.2", midgard="1.5.0"),
+        prev_gyllir="1.7.0",
+        versions=GycVersions (compiler="15", target="15", ymir="1.5.3", bootstrap="1.5.3", midgard="1.6.0"),
         ubuntu_version=UBUNTU_FOR_GCC15,
-        gyllir=GyllirSpec(gyc="15_1.5.2", compile_with="15", gyllir_version="1.7.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.6.3"),
+        gyllir=GyllirSpec(gyc="15_1.5.3", compile_with="15", gyllir_version="1.8.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.7.0"),
     ),
 }
