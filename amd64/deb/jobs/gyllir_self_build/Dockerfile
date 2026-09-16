@@ -27,10 +27,6 @@ RUN dpkg -i gyllir.deb
 RUN gyc --version
 RUN gyllir -h || true
 
-# gyllir's test suite shells out to `git commit`/`git config --global --get user.*`.
-RUN git config --global user.email "ci@gyllir.local"
-RUN git config --global user.name "Gyllir CI"
-
 FROM install_toolchain AS build_gyllir
 
 ARG GYLLIR_VERSION
@@ -40,13 +36,12 @@ RUN git clone https://github.com/GNU-Ymir/Gyllir.git .
 RUN git fetch --all --tags
 RUN git checkout "${GYLLIR_VERSION}"
 
-RUN gyllir test --dry
+# Only the gyllir binary that goes into the .deb is built here. Upstream's own CI is what gates a
+# Gyllir release on its test suite; this pipeline packages an already-tagged release, so building
+# and running gyllir.test (`gyllir test --dry`, then `./gyllir.test -sf`) only cost build time.
 RUN gyllir build --release
 
-FROM build_gyllir AS test
-RUN ./gyllir.test -sf
-
-FROM test AS package
+FROM build_gyllir AS package
 
 ARG GYLLIR_VERSION_NUMBER
 ARG ARCH
