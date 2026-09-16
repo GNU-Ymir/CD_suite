@@ -137,6 +137,33 @@ the previous stage's output, and (if built) a `GyllirSpec` with its own `compile
   (`ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)`) under the `CFLAGS-ymir` line
   if it's missing. This works around a missing build dependency in some upstream `gymir` tags; the
   `grep -qF ... || sed -i ...` guard keeps it idempotent if a future tag already has the line.
+- `bootstrap_build/Dockerfile`'s `build_midgard` stage has two build paths, picked by whether the
+  checked-out `yruntime` carries a `gyllir.toml`. Up to midgard 1.3.0 it is a CMake project
+  (`cmake .. && make install DESTDIR=`); from 1.3.1 on, CMake is gone and it is built by
+  `gyllir build <target>` from a manifest, then installed by yruntime's own `install` script. Only
+  the three library targets that `install` picks up are built — `gyllir build` with no target would
+  also build the `midgard_tests` executable, whose link needs an already-installed midgard that the
+  freshly built gyc does not carry (upstream's own Dockerfile survives this because its gyc comes
+  from a released .deb that still bundles the previous midgard). That script
+  writes to the real `/usr`, so the stage runs it and mirrors the result into the package root.
+  The gyllir it runs is the *previous* stage's (the same `gyllir.deb` already copied in for
+  `fetch_gcc_version`), not the `GYLLIR_VERSION` the yruntime tag names — the chain has only
+  built what it has built. Requires `cpio`, which `install` uses to copy the `.yr` sources.
+- The `MIDGARD_SHORT_VERSION` that suffixes the installed archives (`libgymidgard-debug_<short>.a`)
+  and namespaces the include dir comes from a different file in each era, and the stage reads
+  whichever one the build system in use reads: CMake names them after `YMIR_BOOTSTRAP_VERSION` in
+  the yruntime checkout's `YMIR_VERSION` (the gyc it is built *with*), while `install` names them
+  after yruntime's own `VERSION` (the midgard release itself). These disagree as soon as a
+  bootstrap trails a midgard release — midgard 1.5.0 carries `YMIR_BOOTSTRAP_VERSION=1.4.0`, so
+  the old rule would have suffixed it `1.4` while `gyc` links `-lgymidgard-debug_1.5`. The stage
+  asserts the derived value matches the major.minor of the stage's own `midgard` knob, which is
+  what `Make-lang.in` bakes into `gycspec.o` as `LIBYMIDGARD_VERSION`.
+- Every `apt-get update` lives in the same `RUN` as the installs it feeds. Split across two `RUN`s
+  it becomes a cached layer holding an index that still names exact `.deb` versions long after
+  Ubuntu has dropped them from the pool, and the install then dies on a wall of 404s for files that
+  no longer exist — a failure that looks like a network problem but is really a stale cache. The
+  cost is that touching one of these lines re-runs everything after it, including `clone_gcc`'s
+  bare `gcc.git` clone.
 - Building requires a working Docker daemon and network access to `gcc.gnu.org`, `github.com`, and
   the Ubuntu apt mirrors; there's no offline/vendored mode.
 - `bootstrap_v1.1`'s single `ubuntu_version` is set to the *compiler's* ubuntu (24.04, since

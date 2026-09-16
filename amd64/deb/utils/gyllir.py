@@ -78,6 +78,11 @@ class GyllirBuilder:
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
+                # A failed RUN ends the stream normally, with the failure reported only in this
+                # field - without it the build looks like it succeeded and the next step fails
+                # instead, on an image that was never tagged.
+                if 'errorDetail' in json_output:
+                    raise RuntimeError (json_output['errorDetail'].get ('message', output))
             except StopIteration:
                 click.echo("Docker image build complete.")
                 break
@@ -160,6 +165,11 @@ class GyllirSelfBuilder:
                 json_output = json.loads(output)
                 if 'stream' in json_output:
                     click.echo(json_output['stream'].strip('\n'))
+                # A failed RUN ends the stream normally, with the failure reported only in this
+                # field - without it the build looks like it succeeded and the next step fails
+                # instead, on an image that was never tagged.
+                if 'errorDetail' in json_output:
+                    raise RuntimeError (json_output['errorDetail'].get ('message', output))
             except StopIteration:
                 click.echo("Docker image build complete.")
                 break

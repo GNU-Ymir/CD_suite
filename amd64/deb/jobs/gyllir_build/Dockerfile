@@ -16,8 +16,9 @@ RUN mkdir /gcc/install
 
 WORKDIR /gcc
 
-RUN apt-get update
-RUN apt-get install -y cmake gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} libtool cmake patchelf libdwarf-dev git libgc-dev
+# Kept in one RUN with the install - see the note in jobs/clone_gcc/Dockerfile.
+RUN apt-get update \
+	&& apt-get install -y cmake gcc-${GCC_MAJOR_VERSION} g++-${GCC_MAJOR_VERSION} libtool cmake patchelf libdwarf-dev git libgc-dev
 
 COPY gyc.deb .
 RUN dpkg -i gyc.deb
