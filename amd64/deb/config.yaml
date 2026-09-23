@@ -8,4 +8,5 @@ ymir_versions:
 - bootstrap_v1.3.2
 - bootstrap_v1.4.0
 - bootstrap_v1.5.3
-
+- bootstrap_v1.6.0
+- bootstrap_v1.7.0

@@ -77,6 +77,17 @@ compatibility fact about each ymir release, not something meant to be tuned per 
 - **`midgard`** (`MIDGARD_VERSION`) — the `yruntime`/`midgard` stdlib's git tag, checked out in the
   `build_midgard` stage. `MIDGARD_SHORT_VERSION` (its value with the patch component stripped)
   namespaces the installed `include/ymir/<short>` path and the `libgymidgard-*` library filenames.
+- **`bootstrap_midgard`** (`YMIR_BOOTSTRAP_MIDGARD_VERSION`, optional) — the `yruntime` tag whose
+  runtime `ymir1` itself links: the std the bootstrap source pins in its `gyllir.toml`, named by
+  gymir's own `YMIR_VERSION` from 1.7.0 on (`Make-lang.in` links `-lgymidgard-debug_<short>` of
+  it). Not the midgard the stage ships (`midgard`), nor necessarily the one the previous
+  `gyc.deb` bundles: gyc 1.6.0 ships midgard 1.8 while bootstrap 1.7.0 pins 1.9. When set,
+  `fetch_gcc_version` builds that tag's debug archive with the previous gyc/gyllir and installs it
+  as `/usr/lib/libgymidgard-debug_<short>.a` (upstream downloads it from the yruntime release
+  instead), and `make` is handed the same value. Leave `None` when the previous `gyc.deb` already
+  carries it or the tag predates it (up to 1.5.x `ymir1` links the archive gyllir builds in
+  `bootstrap/.deps/std`; 1.6.0 links `-lgymidgard-debug_1.6`, bundled by gyc 1.5.3). A gymir tag
+  whose `YMIR_VERSION` names it fails fast in `fetch_gcc_version` if the stage leaves it unset.
 
 `VxxBuilder` also takes a single **`ubuntu_version`** (`UBUNTU_VERSION`, plus `CLONE_IMAGE` for the
 shared clone base) reused for *both* the `fetch_gcc_version`/`configure`/`make` stages (which
@@ -107,10 +118,14 @@ the current stage's own target — it must not assume the previous artifact shar
 target major.
 
 If you add a new `bootstrap_vX.Y` stage, add one `BootstrapStage` entry to the `STAGES` dict in
-`utils/versions.py` (`Builder.run()` itself needs no changes). You need: the five `GycVersions`
-fields, the shared `ubuntu_version` for `VxxBuilder`, the `prev_gyc`/`prev_gyllir` identifiers for
-the previous stage's output, and (if built) a `GyllirSpec` with its own `compile_with`/
-`ubuntu_version` (target major and its matching ubuntu).
+`utils/versions.py` (`Builder.run()` itself needs no changes). You need: the five required
+`GycVersions` fields (plus `bootstrap_midgard` if the gymir tag's `YMIR_VERSION` names a
+`YMIR_BOOTSTRAP_MIDGARD_VERSION` the previous `gyc.deb` does not bundle), the shared
+`ubuntu_version` for `VxxBuilder`, the `prev_gyc`/`prev_gyllir` identifiers for the previous
+stage's output, and (if built) a `GyllirSpec` with its own `compile_with`/
+`ubuntu_version` (target major and its matching ubuntu). Leave `gyllir` unset when no new Gyllir
+release goes with the stage (e.g. `bootstrap_v1.6.0`/`bootstrap_v1.7.0` both keep using the
+gyllir 1.8.0 built by `bootstrap_v1.5.3`) — `prev_gyllir` then keeps naming that older build.
 
 ## Gotchas
 
@@ -153,8 +168,10 @@ the previous stage's output, and (if built) a `GyllirSpec` with its own `compile
   and namespaces the include dir comes from a different file in each era, and the stage reads
   whichever one the build system in use reads: CMake names them after `YMIR_BOOTSTRAP_VERSION` in
   the yruntime checkout's `YMIR_VERSION` (the gyc it is built *with*), while `install` names them
-  after yruntime's own `VERSION` (the midgard release itself). These disagree as soon as a
-  bootstrap trails a midgard release — midgard 1.5.0 carries `YMIR_BOOTSTRAP_VERSION=1.4.0`, so
+  after the midgard release itself — its `VERSION` file up to 1.9.0, and from 1.10.0 on (where
+  `VERSION` is gone) `gyllir.toml`'s top-level `version`, read through
+  `.github/scripts/midgard-version.sh`, which the stage calls too when present. These disagree as
+  soon as a bootstrap trails a midgard release — midgard 1.5.0 carries `YMIR_BOOTSTRAP_VERSION=1.4.0`, so
   the old rule would have suffixed it `1.4` while `gyc` links `-lgymidgard-debug_1.5`. The stage
   asserts the derived value matches the major.minor of the stage's own `midgard` knob, which is
   what `Make-lang.in` bakes into `gycspec.o` as `LIBYMIDGARD_VERSION`.
