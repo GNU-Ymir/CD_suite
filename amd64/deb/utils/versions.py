@@ -13,13 +13,20 @@ class GycVersions:
     - ymir: gymir frontend (binding plugin) git tag, also used as the produced
       package's version label.
     - bootstrap: GNU-Ymir/bootstrap repo git tag.
-    - midgard: yruntime/midgard stdlib git tag.
+    - midgard: yruntime/midgard stdlib git tag bundled into the produced gyc.
+    - bootstrap_midgard: yruntime/midgard git tag whose runtime ymir1 is linked against - the std
+      the bootstrap (ymirc) source pins in its gyllir.toml, named YMIR_BOOTSTRAP_MIDGARD_VERSION
+      in gymir's own YMIR_VERSION from gymir 1.7.0 on. Built from source with the previous
+      stage's gyc when the previous gyc.deb does not already carry it. None for earlier tags,
+      which link either the archive gyllir builds next to libymirc.a or the midgard the previous
+      gyc.deb bundles.
     """
     compiler: str
     target: str
     ymir: str
     bootstrap: str
     midgard: str
+    bootstrap_midgard: str | None = None
 
     @property
     def compiler_major(self) -> str:
@@ -149,5 +156,24 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         versions=GycVersions (compiler="15", target="15", ymir="1.5.3", bootstrap="1.5.3", midgard="1.6.0"),
         ubuntu_version=UBUNTU_FOR_GCC15,
         gyllir=GyllirSpec(gyc="15_1.5.3", compile_with="15", gyllir_version="1.8.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.7.0"),
+    ),
+    "bootstrap_v1.6.0": BootstrapStage (
+        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. ymir1 links
+        # -lgymidgard-debug_1.6, the midgard gyc 1.5.3's .deb already bundles.
+        prev_gyc="15_1.5.3",
+        prev_gyllir="1.8.0",
+        versions=GycVersions (compiler="15", target="15", ymir="1.6.0", bootstrap="1.6.0", midgard="1.8.0"),
+        ubuntu_version=UBUNTU_FOR_GCC15,
+        # No gyllir release after 1.8.0 (already built by bootstrap_v1.5.3).
+    ),
+    "bootstrap_v1.7.0": BootstrapStage (
+        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. bootstrap 1.7.0 pins std
+        # 1.9.0, which ymir1 links, but gyc 1.6.0's .deb only carries midgard 1.8 - so 1.9.0 is
+        # built with it first (see GycVersions.bootstrap_midgard).
+        prev_gyc="15_1.6.0",
+        prev_gyllir="1.8.0",
+        versions=GycVersions (compiler="15", target="15", ymir="1.7.0", bootstrap="1.7.0", midgard="1.10.0", bootstrap_midgard="1.9.0"),
+        ubuntu_version=UBUNTU_FOR_GCC15,
+        # No gyllir release after 1.8.0 (already built by bootstrap_v1.5.3).
     ),
 }

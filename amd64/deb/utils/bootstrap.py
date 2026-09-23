@@ -65,6 +65,7 @@ class VxxBuilder:
                 "GYC_VERSION": self.ymir_version,
                 "YMIR_VERSION": self.versions.bootstrap,
                 "MIDGARD_VERSION": self.versions.midgard,
+                "YMIR_BOOTSTRAP_MIDGARD_VERSION": self.versions.bootstrap_midgard or "",
                 "ARCH": "amd64"
             }
         )

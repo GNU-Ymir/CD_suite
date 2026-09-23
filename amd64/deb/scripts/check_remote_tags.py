@@ -29,6 +29,8 @@ def collect_refs() -> set[tuple[str, str]]:
             refs.add((GYMIR_REPO, stage.versions.ymir))
             refs.add((BOOTSTRAP_REPO, stage.versions.bootstrap))
             refs.add((YRUNTIME_REPO, stage.versions.midgard))
+            if stage.versions.bootstrap_midgard is not None:
+                refs.add((YRUNTIME_REPO, stage.versions.bootstrap_midgard))
 
         # gyllir_version is the tag both jobs/gyllir_build and jobs/gyllir_self_build check
         # out of the Gyllir repo. prev_gyllir is not checked: it names an already-built .deb

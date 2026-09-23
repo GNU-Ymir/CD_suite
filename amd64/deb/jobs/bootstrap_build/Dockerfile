@@ -4,6 +4,7 @@ ARG COMPILER_MAJOR_VERSION="15"
 ARG YMIR_VERSION="0.1.0"
 ARG GYC_VERSION="0.1.0"
 ARG MIDGARD_VERSION="0.1.0"
+ARG YMIR_BOOTSTRAP_MIDGARD_VERSION=""
 ARG ARCH="amd64"
 ARG CLONE_IMAGE="gyc:gcc_clone_26.04"
 ARG UBUNTU_VERSION="26.04"
@@ -16,6 +17,7 @@ ARG GYC_VERSION
 ARG GCC_MAJOR_VERSION
 ARG COMPILER_MAJOR_VERSION
 ARG MIDGARD_VERSION
+ARG YMIR_BOOTSTRAP_MIDGARD_VERSION
 
 COPY gyc.deb .
 COPY gyllir.deb .
@@ -29,6 +31,26 @@ RUN apt-get update \
 RUN gyc --version
 RUN gyllir -h || true
 
+# From gymir 1.7.0 on, ymir1 links -lgymidgard-debug_<major.minor> of the midgard the bootstrap
+# source is compiled against (YMIR_BOOTSTRAP_MIDGARD_VERSION, the std bootstrap's gyllir.toml pins -
+# see gymir's Make-lang.in YMIR_RUNTIME_LIBS), which is not always the one the previous gyc.deb
+# bundles (gyc 1.6.0 ships midgard 1.8, bootstrap 1.7.0 pins 1.9). Upstream downloads that
+# runtime from its yruntime release; here it is built from its tag with the previous gyc/gyllir
+# installed above - the compiler that yruntime release was built with - since the chain only
+# trusts what it has built. Only the debug archive is built: it is all ymir1 links, and like in
+# build_midgard below, a library target needs no installed midgard. Empty for tags whose
+# runtime the previous gyc.deb already carries.
+RUN if [ -n "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" ]; then \
+		SHORT="$(echo "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" | sed -nE 's/^([0-9]+\.[0-9]+).*/\1/p')" \
+		&& test -n "$SHORT" \
+		&& git clone https://github.com/GNU-Ymir/yruntime.git /tmp/bootstrap-midgard \
+		&& cd /tmp/bootstrap-midgard \
+		&& git checkout "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" \
+		&& gyllir build gymidgard_debug \
+		&& install -m 644 libgymidgard_debug.a "/usr/lib/libgymidgard-debug_${SHORT}.a" \
+		&& cd / && rm -rf /tmp/bootstrap-midgard; \
+	fi
+
 WORKDIR /gcc/gcc-src
 
 RUN git fetch origin releases/gcc-${GCC_VERSION}:refs/releases/gcc-${GCC_VERSION} --depth=1
@@ -41,6 +63,13 @@ WORKDIR /gcc/gcc-src/gcc/ymir
 RUN git fetch --all
 
 RUN git checkout "${GYC_VERSION}";
+
+# A tag that names YMIR_BOOTSTRAP_MIDGARD_VERSION links that midgard's runtime, and would only fail
+# at ymir1's final link (a missing -lgymidgard-debug_<version>) if the stage forgot to build it.
+RUN if [ -f YMIR_VERSION ] && grep -q '^YMIR_BOOTSTRAP_MIDGARD_VERSION=' YMIR_VERSION && [ -z "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" ]; then \
+		echo "gymir ${GYC_VERSION} links the midgard named by YMIR_BOOTSTRAP_MIDGARD_VERSION in its YMIR_VERSION - set GycVersions.bootstrap_midgard for this stage" >&2 && exit 1; \
+	fi
+
 RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
 
 RUN touch lang.opt.urls
@@ -79,7 +108,14 @@ RUN CC=gcc-${COMPILER_MAJOR_VERSION} CXX=g++-${COMPILER_MAJOR_VERSION} ../gcc-sr
 FROM configure AS make
 WORKDIR /gcc/gcc-build
 
-RUN make -j$(( $(nproc) - 1 ))
+ARG YMIR_BOOTSTRAP_MIDGARD_VERSION
+
+# gymir's Make-lang.in (>= 1.7.0) reads YMIR_BOOTSTRAP_MIDGARD_VERSION from the environment before
+# falling back to its own YMIR_VERSION, so pin it to the runtime fetch_gcc_version actually built.
+# Only passed when set: an empty environment variable still counts as defined for `?=`, so it
+# would override that fallback with nothing and trip Make-lang.in's version check.
+RUN env ${YMIR_BOOTSTRAP_MIDGARD_VERSION:+"YMIR_BOOTSTRAP_MIDGARD_VERSION=${YMIR_BOOTSTRAP_MIDGARD_VERSION}"} \
+	make -j$(( $(nproc) - 1 ))
 RUN make install DESTDIR=/gcc/gcc-install
 
 FROM make AS build_first_deb
@@ -158,11 +194,14 @@ RUN git checkout "${MIDGARD_VERSION}";
 # one the build system actually in use reads rather than re-deriving it from the tag:
 #  - CMake era (<= 1.3.0): CMakeLists.txt names them after YMIR_BOOTSTRAP_VERSION in this
 #    checkout's YMIR_VERSION, i.e. after the gyc midgard is built with, not its own release.
-#  - gyllir era (>= 1.3.1): yruntime's own `install` script names them after its VERSION file,
-#    i.e. after the midgard release itself.
+#  - gyllir era (>= 1.3.1): yruntime's own `install` script names them after the midgard release
+#    itself - read from its VERSION file up to 1.9.0, and from 1.10.0 on (VERSION is gone) from
+#    gyllir.toml's top-level version, through .github/scripts/midgard-version.sh.
 # The two genuinely disagree once a bootstrap trails a midgard release (midgard 1.5.0 carries
 # YMIR_BOOTSTRAP_VERSION=1.4.0: short version 1.5 under the new rule, 1.4 under the old one).
-RUN if [ -f gyllir.toml ]; then \
+RUN if [ -f .github/scripts/midgard-version.sh ]; then \
+		bash .github/scripts/midgard-version.sh | cut -d. -f1,2 > /tmp/midgard_short_version; \
+	elif [ -f gyllir.toml ]; then \
 		tr -d '[:space:]' < VERSION | cut -d. -f1,2 > /tmp/midgard_short_version; \
 	else \
 		sed -nE 's/^YMIR_BOOTSTRAP_VERSION=([0-9]+\.[0-9]+).*/\1/p' YMIR_VERSION > /tmp/midgard_short_version; \
