@@ -86,8 +86,10 @@ compatibility fact about each ymir release, not something meant to be tuned per 
   as `/usr/lib/libgymidgard-debug_<short>.a` (upstream downloads it from the yruntime release
   instead), and `make` is handed the same value. Leave `None` when the previous `gyc.deb` already
   carries it or the tag predates it (up to 1.5.x `ymir1` links the archive gyllir builds in
-  `bootstrap/.deps/std`; 1.6.0 links `-lgymidgard-debug_1.6`, bundled by gyc 1.5.3). A gymir tag
-  whose `YMIR_VERSION` names it fails fast in `fetch_gcc_version` if the stage leaves it unset.
+  `bootstrap/.deps/std`; 1.6.0 links `-lgymidgard-debug_1.6`, bundled by gyc 1.5.3; 1.9.1 pins
+  1.12.0, bundled by gyc 1.8.0 - `make` then reads the value from gymir's own `YMIR_VERSION`). A
+  gymir tag whose `YMIR_VERSION` names it fails fast in `fetch_gcc_version` if the stage leaves it
+  unset and the previous `gyc.deb` did not install `/usr/lib/libgymidgard-debug_<short>.a`.
 
 `VxxBuilder` also takes a single **`ubuntu_version`** (`UBUNTU_VERSION`, plus `CLONE_IMAGE` for the
 shared clone base) reused for *both* the `fetch_gcc_version`/`configure`/`make` stages (which
@@ -124,7 +126,7 @@ If you add a new `bootstrap_vX.Y` stage, add one `BootstrapStage` entry to the `
 `ubuntu_version` for `VxxBuilder`, the `prev_gyc`/`prev_gyllir` identifiers for the previous
 stage's output, and (if built) a `GyllirSpec` with its own `compile_with`/
 `ubuntu_version` (target major and its matching ubuntu). Leave `gyllir` unset when no new Gyllir
-release goes with the stage (e.g. `bootstrap_v1.6.0` through `bootstrap_v1.8.0` all keep using the
+release goes with the stage (e.g. `bootstrap_v1.6.0` through `bootstrap_v1.9.1` all keep using the
 gyllir 1.8.0 built by `bootstrap_v1.5.3`) — `prev_gyllir` then keeps naming that older build.
 
 ## Gotchas
