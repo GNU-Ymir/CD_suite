@@ -124,7 +124,7 @@ If you add a new `bootstrap_vX.Y` stage, add one `BootstrapStage` entry to the `
 `ubuntu_version` for `VxxBuilder`, the `prev_gyc`/`prev_gyllir` identifiers for the previous
 stage's output, and (if built) a `GyllirSpec` with its own `compile_with`/
 `ubuntu_version` (target major and its matching ubuntu). Leave `gyllir` unset when no new Gyllir
-release goes with the stage (e.g. `bootstrap_v1.6.0`/`bootstrap_v1.7.0` both keep using the
+release goes with the stage (e.g. `bootstrap_v1.6.0` through `bootstrap_v1.8.0` all keep using the
 gyllir 1.8.0 built by `bootstrap_v1.5.3`) — `prev_gyllir` then keeps naming that older build.
 
 ## Gotchas
