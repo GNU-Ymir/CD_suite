@@ -38,6 +38,8 @@ class GyllirBuilder:
         generator = self.api.build(
             path="jobs/gyllir_build/.",          # directory containing your Dockerfile
             tag=f"gyllir:from_{self.gyllir_version}",
+            rm=True,          # drop each step's container once the build succeeds
+            forcerm=True,     # ... and when it fails, or every RUN step leaks one
             buildargs={
                 "GCC_VERSION": self.gcc_version,
                 "GCC_MAJOR_VERSION": self.major,
@@ -124,6 +126,8 @@ class GyllirSelfBuilder:
         generator = self.api.build(
             path="jobs/gyllir_self_build/.",          # directory containing your Dockerfile
             tag=f"gyllir:from_{self.gyllir_version}",
+            rm=True,          # drop each step's container once the build succeeds
+            forcerm=True,     # ... and when it fails, or every RUN step leaks one
             buildargs={
                 "GCC_MAJOR_VERSION": self.major,
                 "UBUNTU_VERSION": self.ubuntu_version,

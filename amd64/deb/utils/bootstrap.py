@@ -42,6 +42,8 @@ class VxxBuilder:
         generator = self.api.build(
             path="jobs/clone_gcc/.",          # directory containing your Dockerfile
             tag=self.clone_image,
+            rm=True,          # drop each step's container once the build succeeds
+            forcerm=True,     # ... and when it fails, or every RUN step leaks one
             buildargs={
                 "UBUNTU_VERSION" : self.ubuntu_version
             }
@@ -56,6 +58,8 @@ class VxxBuilder:
         generator = self.api.build(
             path="jobs/bootstrap_build/",
             tag=f"gyc:final_{self.versions.bootstrap}_deb",
+            rm=True,          # drop each step's container once the build succeeds
+            forcerm=True,     # ... and when it fails, or every RUN step leaks one
             buildargs={
                 "GCC_VERSION" : self.gcc_version,
                 "GCC_MAJOR_VERSION" : self.major,
