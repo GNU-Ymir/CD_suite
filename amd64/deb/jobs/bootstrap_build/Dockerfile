@@ -66,8 +66,13 @@ RUN git checkout "${GYC_VERSION}";
 
 # A tag that names YMIR_BOOTSTRAP_MIDGARD_VERSION links that midgard's runtime, and would only fail
 # at ymir1's final link (a missing -lgymidgard-debug_<version>) if the stage forgot to build it.
-RUN if [ -f YMIR_VERSION ] && grep -q '^YMIR_BOOTSTRAP_MIDGARD_VERSION=' YMIR_VERSION && [ -z "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" ]; then \
-		echo "gymir ${GYC_VERSION} links the midgard named by YMIR_BOOTSTRAP_MIDGARD_VERSION in its YMIR_VERSION - set GycVersions.bootstrap_midgard for this stage" >&2 && exit 1; \
+# Fine when the previous gyc.deb already installed that archive (gyc 1.8.0 ships midgard 1.12,
+# which bootstrap 1.9.1 pins).
+RUN if [ -f YMIR_VERSION ] && [ -z "${YMIR_BOOTSTRAP_MIDGARD_VERSION}" ]; then \
+		NAMED="$(sed -nE 's/^YMIR_BOOTSTRAP_MIDGARD_VERSION=([0-9]+\.[0-9]+).*/\1/p' YMIR_VERSION)" \
+		&& if [ -n "$NAMED" ] && [ ! -f "/usr/lib/libgymidgard-debug_${NAMED}.a" ]; then \
+			echo "gymir ${GYC_VERSION} links midgard ${NAMED} (YMIR_BOOTSTRAP_MIDGARD_VERSION in its YMIR_VERSION), which the previous gyc.deb does not carry - set GycVersions.bootstrap_midgard for this stage" >&2 && exit 1; \
+		fi; \
 	fi
 
 RUN grep -qF 'ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in || sed -i '/^CFLAGS-ymir/a ymir/gycspec.o: $(CORETYPES_H) $(PLUGIN_HEADERS) $(INSN_ATTR_H)' Make-lang.in
