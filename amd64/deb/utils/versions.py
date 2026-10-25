@@ -196,11 +196,12 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         # No gyllir release after 1.8.0 (already built by bootstrap_v1.5.3).
     ),
     "bootstrap_v1.10.4": BootstrapStage (
-        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. bootstrap 1.9.1 pins std
-        # 1.12.0, which ymir1 links and gyc 1.8.0's .deb already bundles - nothing to build first.
+        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. bootstrap 1.10.4 pins std
+        # 1.16.6, which ymir1 links, but gyc 1.9.1's .deb only carries midgard 1.14 - so 1.16.6
+        # is built with it first (see GycVersions.bootstrap_midgard).
         prev_gyc="15_1.9.1",
         prev_gyllir="1.8.0",
-        versions=GycVersions (compiler="15", target="15", ymir="1.10.4", bootstrap="1.10.4", midgard="1.16.9"),
+        versions=GycVersions (compiler="15", target="15", ymir="1.10.4", bootstrap="1.10.4", midgard="1.16.9", bootstrap_midgard="1.16.6"),
         ubuntu_version=UBUNTU_FOR_GCC15,
         gyllir=GyllirSpec(gyc="15_1.10.4", compile_with="15", gyllir_version="1.10.0", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.8.0"),
     ),
