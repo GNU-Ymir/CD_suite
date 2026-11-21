@@ -231,13 +231,13 @@ STAGES: dict[str, CxxStage | BootstrapStage] = {
         ubuntu_version=UBUNTU_FOR_GCC15,
         # No gyllir release after 1.11.0 (already built by bootstrap_v1.12.0).
     ),
-    "bootstrap_v1.14.1": BootstrapStage (
-        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. bootstrap 1.14.1 pins std
+    "bootstrap_v1.14.2": BootstrapStage (
+        # target gcc-15, compiled with gcc-15, both on ubuntu 26.04. bootstrap 1.14.2 pins std
         # 3.2.0, which ymir1 links and gyc 1.13.0's .deb already bundles - nothing to build first.
         prev_gyc="15_1.13.0",
         prev_gyllir="1.11.0",
-        versions=GycVersions (compiler="15", target="15", ymir="1.14.1", bootstrap="1.14.1", midgard="4.0.1"),
+        versions=GycVersions (compiler="15", target="15", ymir="1.14.2", bootstrap="1.14.2", midgard="4.0.2"),
         ubuntu_version=UBUNTU_FOR_GCC15,
-        gyllir=GyllirSpec(gyc="15_1.14.1", compile_with="15", gyllir_version="1.12.1", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.11.0"),
+        gyllir=GyllirSpec(gyc="15_1.14.2", compile_with="15", gyllir_version="1.12.1", ubuntu_version=UBUNTU_FOR_GCC15, prev_gyllir="1.11.0"),
     ),
 }
